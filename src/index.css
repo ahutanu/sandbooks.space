@@ -1,0 +1,420 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Ensure body/html have dark mode backgrounds to prevent white showing through */
+html,
+body {
+  background-color: white;
+}
+
+html.dark,
+html.dark body {
+  background-color: #1c1917; /* stone-900 to match Tailwind components */
+}
+
+/* Font rendering optimization for crisp text on all platforms */
+html, body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: 'kern' 1, 'liga' 1;
+}
+
+/* Enable ligatures for code blocks */
+code, pre, .font-mono {
+  font-variant-ligatures: common-ligatures;
+}
+
+/* Task List Styles */
+ul[data-type="taskList"] {
+  list-style: none;
+  padding: 0;
+  margin: 1rem 0;
+}
+
+ul[data-type="taskList"] li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+ul[data-type="taskList"] li label {
+  display: flex;
+  align-items: center;
+  margin-top: 0.125rem;
+}
+
+ul[data-type="taskList"] li > label > input[type="checkbox"] {
+  width: 1.125rem;
+  height: 1.125rem;
+  border: 2px solid #cbd5e1;
+  border-radius: 0.25rem;
+  cursor: pointer;
+  margin: 0;
+  appearance: none;
+  background-color: white;
+}
+
+ul[data-type="taskList"] li > label > input[type="checkbox"]:checked {
+  background-color: #2563eb;
+  border-color: #2563eb;
+  background-image: url("data:image/svg+xml,%3csvg viewBox='0 0 16 16' fill='white' xmlns='http://www.w3.org/2000/svg'%3e%3cpath d='M12.207 4.793a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414L6.5 9.086l4.293-4.293a1 1 0 011.414 0z'/%3e%3c/svg%3e");
+  background-size: 100% 100%;
+  background-position: 50%;
+  background-repeat: no-repeat;
+}
+
+ul[data-type="taskList"] li > div {
+  flex: 1;
+  padding-top: 0.125rem;
+}
+
+ul[data-type="taskList"] li[data-checked="true"] > div {
+  text-decoration: line-through;
+  color: #64748b;
+}
+
+/* Placeholder styles */
+.ProseMirror p.is-editor-empty:first-child::before {
+  color: #9ca3af;
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+/* Link hover styles */
+.ProseMirror a {
+  cursor: pointer;
+}
+
+.ProseMirror a:hover {
+  text-decoration: underline;
+}
+
+/* Code output typography optimization */
+.code-output {
+  line-height: 1.4;
+  font-family: 'JetBrains Mono Variable', 'SF Mono', 'Monaco', 'Inconsolata', 'Consolas', 'Courier New', monospace;
+}
+
+/* Glass Morphism Effects - Performance Optimized with Gradient Borders */
+
+/* CSS Variables for Performance & Maintainability */
+:root {
+  /* Blur intensity (responsive via media queries) */
+  --blur-modal: 20px;
+  --blur-backdrop: 12px;
+  --blur-card: 10px;
+
+  /* Light mode colors */
+  --glass-modal-bg: rgba(255, 255, 255, 0.85);
+  --glass-backdrop-bg: rgba(0, 0, 0, 0.65);
+  --glass-card-bg: rgba(255, 255, 255, 0.08);
+  --glass-card-border: rgba(255, 255, 255, 0.15);
+}
+
+.dark {
+  /* Dark mode color overrides */
+  --glass-modal-bg: rgba(30, 30, 30, 0.85);
+  --glass-card-bg: rgba(0, 0, 0, 0.3);
+  --glass-card-border: rgba(255, 255, 255, 0.08);
+}
+
+/* Glass Modal with Gradient Border (Dimensional Depth) */
+.glass-modal {
+  border: 2px solid transparent;
+  background-image:
+    linear-gradient(var(--glass-modal-bg), var(--glass-modal-bg)),
+    linear-gradient(135deg,
+      rgba(255, 255, 255, 0.5) 0%,
+      rgba(255, 255, 255, 0.1) 50%,
+      rgba(0, 0, 0, 0.05) 100%
+    );
+  background-origin: padding-box, border-box;
+  background-clip: padding-box, border-box;
+  backdrop-filter: blur(var(--blur-modal));
+  -webkit-backdrop-filter: blur(var(--blur-modal));
+
+  /* GPU Acceleration for 60fps */
+  will-change: backdrop-filter, transform;
+  transform: translateZ(0);
+
+  /* Paint Optimization */
+  contain: layout style paint;
+}
+
+.dark .glass-modal {
+  background-image:
+    linear-gradient(var(--glass-modal-bg), var(--glass-modal-bg)),
+    linear-gradient(135deg,
+      rgba(255, 255, 255, 0.2) 0%,
+      rgba(255, 255, 255, 0.05) 50%,
+      rgba(0, 0, 0, 0.3) 100%
+    );
+}
+
+/* Glass Backdrop */
+.glass-backdrop {
+  background: var(--glass-backdrop-bg);
+  backdrop-filter: blur(var(--blur-backdrop));
+  -webkit-backdrop-filter: blur(var(--blur-backdrop));
+
+  /* GPU Acceleration */
+  will-change: backdrop-filter, transform;
+  transform: translateZ(0);
+
+  /* Paint Optimization */
+  contain: layout style paint;
+}
+
+/* Glass Card (currently unused - remove if not needed) */
+.glass-card {
+  background: var(--glass-card-bg);
+  backdrop-filter: blur(var(--blur-card));
+  -webkit-backdrop-filter: blur(var(--blur-card));
+  border: 1px solid var(--glass-card-border);
+
+  /* GPU Acceleration */
+  will-change: backdrop-filter, transform;
+  transform: translateZ(0);
+
+  /* Paint Optimization */
+  contain: layout style paint;
+}
+
+/* Mobile-optimized blur (reduced for battery life) */
+@media (max-width: 767px) {
+  :root {
+    --blur-modal: 10px;
+    --blur-backdrop: 8px;
+    --blur-card: 6px;
+  }
+}
+
+/* Low-end device optimization */
+@media (prefers-reduced-data: reduce) {
+  :root {
+    --blur-modal: 5px;
+    --blur-backdrop: 4px;
+    --blur-card: 3px;
+  }
+}
+
+/* Remove will-change when inactive for memory optimization */
+.glass-modal:not(:hover):not(:focus-within),
+.glass-backdrop:not(:hover) {
+  will-change: auto;
+}
+
+/* Accessibility: Respect user preferences */
+@media (prefers-reduced-transparency: reduce) {
+  .glass-modal,
+  .glass-card {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background: white;
+  }
+
+  .dark .glass-modal,
+  .dark .glass-card {
+    background: rgb(30, 30, 30);
+  }
+
+  .glass-backdrop {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background: rgba(0, 0, 0, 0.9);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Tag System Animations */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-4px); }
+  20%, 40%, 60%, 80% { transform: translateX(4px); }
+}
+
+.animate-shake {
+  animation: shake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+/* Focus Mode - Dim non-active paragraphs for concentration */
+.focus-mode-dimmed {
+  opacity: 0.3;
+  transition: opacity 200ms ease-in-out;
+}
+
+/* Dark mode focus mode - slightly higher opacity for legibility */
+.dark .focus-mode-dimmed {
+  opacity: 0.35;
+}
+
+/* ====================================================================
+   CODE BLOCK SCROLL SYNC FIX - Critical for preventing layer desync
+   ==================================================================== */
+
+/* Container ensures both layers share the same scrollable space */
+.code-block-container {
+  position: relative;
+  min-height: 80px;
+}
+
+/* Background layer (syntax highlighted) - absolute position fills container */
+.code-highlighting {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none; /* Prevents interaction, passes through to editable layer */
+  z-index: 0;
+
+  /* Critical: Must match editable layer exactly */
+  padding: 1.5rem; /* p-6 */
+  overflow: auto; /* Matches overflow behavior */
+  font-family: 'JetBrains Mono Variable', 'SF Mono', 'Monaco', 'Inconsolata', 'Consolas', 'Courier New', monospace;
+  font-size: 14px; /* text-base */
+  line-height: 1.625; /* leading-relaxed */
+  white-space: pre; /* Preserves whitespace exactly like textarea */
+  word-wrap: normal; /* Prevents word wrapping */
+  tab-size: 2; /* Consistent tab width */
+}
+
+/* Foreground layer (editable) - relative position creates stacking context */
+.code-editing {
+  position: relative;
+  z-index: 10;
+  background: transparent;
+
+  /* Transparent text with visible caret */
+  color: transparent;
+  caret-color: rgb(59, 130, 246); /* Blue caret */
+  -webkit-text-fill-color: transparent; /* Safari fix */
+
+  /* Critical: Must match highlighting layer exactly */
+  padding: 1.5rem; /* p-6 */
+  overflow: auto; /* Creates scroll container */
+  font-family: 'JetBrains Mono Variable', 'SF Mono', 'Monaco', 'Inconsolata', 'Consolas', 'Courier New', monospace;
+  font-size: 14px; /* text-base */
+  line-height: 1.625; /* leading-relaxed */
+  white-space: pre; /* Preserves whitespace */
+  word-wrap: normal; /* Prevents word wrapping */
+  tab-size: 2; /* Consistent tab width */
+  resize: none; /* Prevents resize handle */
+  outline: none; /* Remove default outline */
+}
+
+/* Ensure minimum height to prevent collapsing */
+.code-editing,
+.code-highlighting {
+  min-height: 80px;
+}
+
+/* Hide scrollbars on background layer (foreground drives scroll) */
+.code-highlighting::-webkit-scrollbar {
+  display: none;
+}
+.code-highlighting {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Custom scrollbar for editable layer (optional) */
+.code-editing::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.code-editing::-webkit-scrollbar-track {
+  background: transparent;
+}
+.code-editing::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.3); /* stone-400 with opacity */
+  border-radius: 4px;
+}
+.code-editing::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.5);
+}
+
+/* Dark mode scrollbar */
+.dark .code-editing::-webkit-scrollbar-thumb {
+  background: rgba(214, 211, 209, 0.2); /* stone-300 with opacity */
+}
+.dark .code-editing::-webkit-scrollbar-thumb:hover {
+  background: rgba(214, 211, 209, 0.4);
+}
+
+/* ====================================================================
+   XTERM TERMINAL MOBILE FIX - Ensure visible rendering on all devices
+   ==================================================================== */
+
+/* Force opaque backgrounds on ALL xterm layers */
+.xterm {
+  background-color: #ffffff !important;
+}
+
+.xterm-viewport {
+  background-color: #ffffff !important;
+}
+
+.xterm-screen {
+  background-color: #ffffff !important;
+}
+
+/* Canvas layers (if canvas renderer is used) */
+.xterm canvas {
+  background-color: #ffffff !important;
+}
+
+/* Dark mode backgrounds */
+.dark .xterm,
+.dark .xterm-viewport,
+.dark .xterm-screen,
+.dark .xterm canvas {
+  background-color: #1c1917 !important; /* stone-900 */
+}
+
+/* Ensure DOM renderer rows have proper background and high contrast text */
+.xterm-rows {
+  background-color: #ffffff !important;
+  color: #000000 !important; /* Pure black for maximum contrast */
+  min-height: 100px !important; /* Ensure rows container has height */
+}
+
+.dark .xterm-rows {
+  background-color: #1c1917 !important; /* stone-900 */
+  color: #ffffff !important; /* Pure white for maximum contrast */
+  min-height: 100px !important;
+}
+
+/* Ensure each row div has proper height */
+.xterm-rows > div {
+  min-height: 18px !important; /* Prevent collapsed rows */
+  line-height: normal !important;
+  display: block !important;
+}
+
+/* Force text visibility in all xterm spans */
+.xterm-rows span {
+  color: inherit !important;
+  background-color: transparent;
+  display: inline !important;
+}
+
+/* Cursor visibility */
+.xterm .xterm-cursor {
+  background-color: #3b82f6 !important; /* blue-500 */
+  display: inline-block !important;
+  width: 0.5em !important;
+}

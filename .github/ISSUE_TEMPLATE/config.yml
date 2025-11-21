@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security reports
+    url: mailto:alex@hutanu.net
+    about: Please review SECURITY.md and email sensitive reports instead of opening a public issue.

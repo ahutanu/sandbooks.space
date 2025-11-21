@@ -1,0 +1,106 @@
+# Logs
+logs
+LogFiles/
+backend-logs*
+backend-logs
+backend-logs-latest
+dev.log
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Environment variables (NEVER commit these)
+.env
+.env.local
+.env.production
+.env.development
+.env.test
+*.env
+!.env.example
+backend/.env
+backend/.env.*
+!backend/.env.example
+
+# Dependencies
+node_modules
+package-lock.json.bak
+
+# Build outputs
+dist
+dist-ssr
+build
+*.local
+backend/dist/
+backend/build/
+backend-artifact.zip
+deployments/
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*.swp
+*~
+
+# Test artifacts
+test-screenshots/
+test-results/
+playwright-report/
+.playwright-mcp/
+coverage/
+.nyc_output/
+*.spec.cjs
+test-results.json
+
+# Debug files
+debug-*.png
+debug-*.spec.ts
+verify-*.cjs
+*.tsbuildinfo
+
+# Development tools and temporary files
+.serena/
+.spec-workflow/
+.claude/
+.temp/
+tmp/
+*.tmp
+*.bak
+
+# Backend artifacts
+backend/backend/
+backend/server.log
+backend/*.log
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Archive and backup files
+*.zip
+*.tar.gz
+*.rar
+docs/archive/
+
+# Local development databases (if any in future)
+*.sqlite
+*.sqlite3
+*.db
+
+# docs not needed, we focus on living docs within app
+docs/

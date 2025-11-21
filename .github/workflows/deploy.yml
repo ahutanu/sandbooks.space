@@ -1,0 +1,76 @@
+name: Deploy Sandbooks
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '**/*.ts'
+      - '**/*.tsx'
+      - '**/*.js'
+      - '**/*.json'
+      - '**/*.yml'
+      - '**/*.yaml'
+      - 'package-lock.json'
+      - 'package.json'
+      - 'backend/**'
+      - 'deploy.sh'
+      - '!**/*.md'
+
+concurrency:
+  group: deploy-sandbooks
+  cancel-in-progress: false
+
+env:
+  RESOURCE_GROUP: sandbooks-rg
+  AZ_LOCATION: germanywestcentral
+  BACKEND_NAME: sandbooks-backend
+  BACKEND_PLAN: sandbooks-backend-plan
+  FRONTEND_NAME: sandbooks-frontend
+  FRONTEND_PLAN: sandbooks-frontend-plan
+  FRONTEND_URL: https://sandbooks.space
+  API_URL: https://sandbooks-backend.azurewebsites.net
+  VITE_API_URL: https://sandbooks-backend.azurewebsites.net
+  RATE_LIMIT_WINDOW_MS: 600000
+  RATE_LIMIT_MAX_REQUESTS: 5000
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write   # for OIDC to Azure
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Make deploy script executable
+        run: chmod +x deploy.sh
+
+      - name: Deploy backend + frontend
+        env:
+          HOPX_API_KEY: ${{ secrets.HOPX_API_KEY }}
+          API_ACCESS_TOKEN: ${{ secrets.API_ACCESS_TOKEN }}
+          RESOURCE_GROUP: ${{ env.RESOURCE_GROUP }}
+          AZ_LOCATION: ${{ env.AZ_LOCATION }}
+          BACKEND_NAME: ${{ env.BACKEND_NAME }}
+          BACKEND_PLAN: ${{ env.BACKEND_PLAN }}
+          FRONTEND_NAME: ${{ env.FRONTEND_NAME }}
+          FRONTEND_PLAN: ${{ env.FRONTEND_PLAN }}
+          FRONTEND_URL: ${{ env.FRONTEND_URL }}
+          API_URL: ${{ env.API_URL }}
+          RATE_LIMIT_WINDOW_MS: ${{ env.RATE_LIMIT_WINDOW_MS }}
+          RATE_LIMIT_MAX_REQUESTS: ${{ env.RATE_LIMIT_MAX_REQUESTS }}
+        run: ./deploy.sh

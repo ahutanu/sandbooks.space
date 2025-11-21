@@ -1,0 +1,44 @@
+name: "\u2728 Feature request"
+description: Suggest an idea or improvement for Sandbooks
+title: "[Feature]: "
+labels: [enhancement]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Help us understand the value and scope of your idea.
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What would you like to see?
+      placeholder: "Add offline sync for..."
+    validations:
+      required: true
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Motivation
+      description: Why is this valuable? What problem does it solve?
+      placeholder: "When working on a plane I can't..."
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: If you have an idea of how this should work, describe it.
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      placeholder: "Maybe a simplified mode where..."
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Scope and constraints
+      options:
+        - label: This does not break existing public APIs
+        - label: UI impact is acceptable on mobile and desktop
+        - label: I am willing to help implement or test
