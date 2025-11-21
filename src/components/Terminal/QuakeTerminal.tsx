@@ -66,17 +66,24 @@ export function QuakeTerminal() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isTerminalOpen, handleClose, toggleTerminal]);
 
-  // Focus terminal when opened (after slide animation completes)
+  // Focus terminal when opened (immediate on mobile, delayed on desktop for animation)
   useEffect(() => {
     if (isTerminalOpen && !isAnimating) {
-      // Delay to ensure slide animation completes
+      const isMobile = window.innerWidth < 768;
+      const delay = isMobile ? 100 : 350; // Immediate on mobile, wait for animation on desktop
+
       const timer = setTimeout(() => {
-        // Find xterm instance via DOM query (xterm stores instance on DOM element)
+        // Find xterm textarea and focus it
         const terminalElement = document.querySelector('.xterm-helper-textarea') as HTMLTextAreaElement;
         if (terminalElement) {
-          terminalElement.focus();
+          terminalElement.focus({ preventScroll: true });
+
+          // On mobile, also try clicking the terminal to trigger keyboard
+          if (isMobile) {
+            terminalElement.click();
+          }
         }
-      }, 350); // 300ms animation + 50ms buffer
+      }, delay);
 
       return () => clearTimeout(timer);
     }

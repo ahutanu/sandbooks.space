@@ -179,6 +179,10 @@ export function TerminalEmulator({
       scrollback: 10000,
       rows: 24,
       cols: 80,
+      // Mobile optimizations
+      convertEol: true,
+      screenReaderMode: false,
+      windowsMode: false,
     });
 
     const fitAddon = new FitAddon();
@@ -395,17 +399,37 @@ export function TerminalEmulator({
     };
   }, [sessionId, onStatusChange, onLatencyUpdate, onError, ensurePrompt]);
 
+  // Focus terminal on touch/click (mobile support)
+  const handleContainerInteraction = useCallback(() => {
+    if (xtermRef.current) {
+      // Focus the xterm textarea
+      const textarea = document.querySelector('.xterm-helper-textarea') as HTMLTextAreaElement;
+      if (textarea) {
+        textarea.focus({ preventScroll: true });
+      } else {
+        // Fallback: try to focus the terminal directly
+        xtermRef.current.focus();
+      }
+    }
+  }, []);
+
   return (
     <div
       ref={terminalRef}
-      className="flex-1 bg-white dark:bg-stone-900"
+      className="flex-1 bg-white dark:bg-stone-900 cursor-text"
       style={{
         minHeight: '200px',
         height: '100%',
         width: '100%',
         overflow: 'visible',
-        position: 'relative'
+        position: 'relative',
+        touchAction: 'manipulation' // Optimize touch events on mobile
       }}
+      onClick={handleContainerInteraction}
+      onTouchStart={handleContainerInteraction}
+      role="textbox"
+      aria-label="Terminal input"
+      tabIndex={-1}
     />
   );
 }

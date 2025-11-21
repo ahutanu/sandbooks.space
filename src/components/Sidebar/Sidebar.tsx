@@ -10,12 +10,15 @@ export const Sidebar = ({ isMobile = false }: { isMobile?: boolean }) => {
     deleteNote(noteId);
   };
 
+  // Mobile sidebar is always "open" when rendered (controlled by parent overlay)
+  const isOpen = isMobile ? true : isSidebarOpen;
+
   if (notes.length === 0) {
     return (
       <div className={clsx(
-      "bg-white dark:bg-stone-900 border-r border-stone-200 dark:border-stone-800 p-8 flex-col items-center justify-center self-stretch transition-[width] duration-300 ease-in-out",
-      isMobile ? "flex" : "hidden md:block",
-      isSidebarOpen ? "w-80 flex" : "w-0 hidden"
+      "bg-white dark:bg-stone-900 border-r border-stone-200 dark:border-stone-800 p-8 flex flex-col items-center justify-center self-stretch",
+      isMobile ? "w-full h-full" : "hidden md:flex transition-[width] duration-300 ease-in-out",
+      !isMobile && (isOpen ? "w-80" : "w-0 hidden")
     )}>
         <div className="text-center">
           <svg className="w-16 h-16 mx-auto text-stone-300 dark:text-stone-600 mb-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -30,11 +33,11 @@ export const Sidebar = ({ isMobile = false }: { isMobile?: boolean }) => {
 
   return (
     <aside className={clsx(
-      "bg-white dark:bg-stone-900 border-r border-stone-200 dark:border-stone-800 overflow-y-auto flex-shrink-0 transition-[width,opacity] duration-300 ease-in-out",
-      isMobile ? "block" : "hidden md:block",
-      isSidebarOpen ? "w-80" : "w-0 opacity-0"
+      "bg-white dark:bg-stone-900 border-r border-stone-200 dark:border-stone-800 overflow-y-auto flex-shrink-0",
+      isMobile ? "w-full h-full" : "hidden md:block transition-[width,opacity] duration-300 ease-in-out",
+      !isMobile && (isOpen ? "w-80" : "w-0 opacity-0")
     )}>
-      <div className="pt-4 px-2 md:px-4 pb-8">
+      <div className="pt-4 px-4 pb-8">
         {notes.map((note) => {
           const timestamp = formatTimestamp(note.updatedAt);
 
@@ -42,7 +45,7 @@ export const Sidebar = ({ isMobile = false }: { isMobile?: boolean }) => {
             <div
               key={note.id}
               className={clsx(
-                'px-2 md:px-5 py-2 md:py-4 mb-2 rounded-xl transition-[transform,box-shadow,background-color] duration-300 ease-spring group relative shadow-elevation-1 hover:shadow-elevation-2 hover:-translate-y-0.5 hover:scale-[1.02]',
+                'px-3 md:px-5 py-3 md:py-4 mb-2 rounded-xl transition-[transform,box-shadow,background-color] duration-300 ease-spring group relative shadow-elevation-1 hover:shadow-elevation-2 hover:-translate-y-0.5 hover:scale-[1.02]',
                 activeNoteId === note.id
                   ? 'bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-900/20 dark:to-blue-900/10 text-blue-900 dark:text-blue-100 font-semibold'
                   : 'bg-gradient-to-br from-stone-50 to-white dark:from-stone-800 dark:to-stone-900 hover:from-stone-100 hover:to-white dark:hover:from-stone-750 dark:hover:to-stone-850 text-stone-700 dark:text-stone-300'
@@ -56,7 +59,7 @@ export const Sidebar = ({ isMobile = false }: { isMobile?: boolean }) => {
                   aria-current={activeNoteId === note.id ? 'true' : 'false'}
                 >
                   <h3 className={clsx(
-                    'truncate text-xs md:text-base leading-tight',
+                    'truncate text-sm md:text-base leading-tight',
                     activeNoteId === note.id
                       ? 'text-blue-900 dark:text-blue-100 font-semibold'
                       : 'text-stone-900 dark:text-stone-50 font-medium'
@@ -68,7 +71,7 @@ export const Sidebar = ({ isMobile = false }: { isMobile?: boolean }) => {
                     aria-label={`Last edited ${timestamp.absolute}`}
                     title={timestamp.absolute}
                     className={clsx(
-                      'block text-[10px] md:text-xs mt-1 md:mt-2',
+                      'block text-xs mt-1 md:mt-2',
                       activeNoteId === note.id ? 'text-blue-600 dark:text-blue-300' : 'text-stone-500 dark:text-stone-400'
                     )}
                   >
@@ -77,7 +80,7 @@ export const Sidebar = ({ isMobile = false }: { isMobile?: boolean }) => {
 
                   {/* Tags - minimal text-only display */}
                   {note.tags && note.tags.length > 0 && (
-                    <div className="flex items-center flex-wrap gap-1 md:gap-1.5 mt-1 md:mt-1.5 text-[10px] md:text-xs opacity-60">
+                    <div className="flex items-center flex-wrap gap-1 md:gap-1.5 mt-1 md:mt-1.5 text-xs opacity-60">
                       {note.tags.slice(0, 3).map((tag, idx) => {
                         const colorMap: Record<string, string> = {
                           gray: '#78716c', red: '#ef4444', orange: '#f97316', amber: '#f59e0b',

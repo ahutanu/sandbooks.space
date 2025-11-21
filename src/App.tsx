@@ -114,7 +114,8 @@ function App() {
   useEffect(() => {
     if (!isMobileSidebarOpen) return;
     closeMobileSidebar();
-  }, [activeNoteId, isMobileSidebarOpen]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeNoteId]); // Only depend on activeNoteId, not isMobileSidebarOpen to avoid closing on open
 
   // Escape key always blurs focused elements, enabling shortcuts
   useEffect(() => {
@@ -226,14 +227,23 @@ function App() {
 
         {/* Mobile sidebar overlay */}
         {isMobileSidebarOpen && (
-          <div className="fixed inset-0 z-40 md:hidden animate-fadeIn">
-            {/* Backdrop */}
+          <div className="fixed inset-0 z-40 md:hidden">
+            {/* Backdrop - solid color without backdrop-filter for mobile compatibility */}
             <div
-              className="absolute inset-0 glass-backdrop transition-opacity duration-200"
+              className="absolute inset-0 bg-black/60 transition-opacity duration-200 ease-out"
               onClick={closeMobileSidebar}
+              role="button"
+              aria-label="Close sidebar"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  closeMobileSidebar();
+                }
+              }}
             />
-            {/* Sidebar */}
-            <div className="absolute left-0 top-0 bottom-0 w-80 max-w-[85vw] z-10 animate-slideInLeft bg-white dark:bg-stone-900 shadow-2xl">
+            {/* Sidebar - full height with proper stacking */}
+            <div className="absolute left-0 top-0 bottom-0 w-full max-w-[85vw] sm:w-80 sm:max-w-none z-50 bg-white dark:bg-stone-900 shadow-2xl transition-transform duration-300 ease-out">
               <Sidebar isMobile={true} />
             </div>
           </div>
