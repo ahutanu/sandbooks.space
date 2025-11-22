@@ -66,28 +66,58 @@ export function QuakeTerminal() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isTerminalOpen, handleClose, toggleTerminal]);
 
-  // Focus terminal when opened (immediate on mobile, delayed on desktop for animation)
+  // Focus terminal when connected (wait for session to be ready)
   useEffect(() => {
-    if (isTerminalOpen && !isAnimating) {
-      const isMobile = window.innerWidth < 768;
-      const delay = isMobile ? 100 : 350; // Immediate on mobile, wait for animation on desktop
-
-      const timer = setTimeout(() => {
-        // Find xterm textarea and focus it
-        const terminalElement = document.querySelector('.xterm-helper-textarea') as HTMLTextAreaElement;
-        if (terminalElement) {
-          terminalElement.focus({ preventScroll: true });
-
-          // On mobile, also try clicking the terminal to trigger keyboard
-          if (isMobile) {
-            terminalElement.click();
-          }
-        }
-      }, delay);
-
-      return () => clearTimeout(timer);
+    // Only focus when terminal is open AND connected
+    if (!isTerminalOpen || globalTerminalStatus !== 'connected') {
+      return;
     }
-  }, [isTerminalOpen, isAnimating]);
+
+    const isMobile = window.innerWidth < 768;
+
+    // Retry logic to ensure xterm textarea exists
+    const focusTerminal = () => {
+      const terminalElement = document.querySelector('.xterm-helper-textarea') as HTMLTextAreaElement;
+
+      if (terminalElement) {
+        // Successfully found the textarea, focus it
+        terminalElement.focus({ preventScroll: true });
+
+        // On mobile, also trigger click to ensure keyboard appears
+        if (isMobile) {
+          terminalElement.click();
+        }
+        return true; // Success
+      }
+      return false; // Not found yet
+    };
+
+    // Initial delay: shorter on mobile since we're already waiting for connection
+    const initialDelay = isMobile ? 50 : 100;
+
+    const timer = setTimeout(() => {
+      // Try to focus immediately
+      if (focusTerminal()) {
+        return; // Success on first try
+      }
+
+      // Retry with exponential backoff if not found
+      let retryCount = 0;
+      const maxRetries = 5;
+
+      const retryInterval = setInterval(() => {
+        if (focusTerminal() || retryCount >= maxRetries) {
+          clearInterval(retryInterval);
+        }
+        retryCount++;
+      }, 100); // Retry every 100ms
+
+      // Cleanup retry interval
+      return () => clearInterval(retryInterval);
+    }, initialDelay);
+
+    return () => clearTimeout(timer);
+  }, [isTerminalOpen, globalTerminalStatus]);
 
   // Handle status change
   const handleStatusChange = useCallback(
@@ -141,9 +171,8 @@ export function QuakeTerminal() {
     <>
       {/* Backdrop overlay with glass blur */}
       <div
-        className={`fixed inset-0 bg-black/20 backdrop-blur-sm transition-opacity duration-300 ${
-          isAnimating ? 'opacity-0' : 'opacity-100'
-        }`}
+        className={`fixed inset-0 bg-black/20 backdrop-blur-sm transition-opacity duration-300 ${isAnimating ? 'opacity-0' : 'opacity-100'
+          }`}
         style={{
           zIndex: 50, // Backdrop below terminal (z-index: 60)
         }}
@@ -153,9 +182,8 @@ export function QuakeTerminal() {
 
       {/* Terminal container */}
       <div
-        className={`fixed left-0 right-0 shadow-elevation-4 transition-transform duration-300 ease-out ${
-          isAnimating ? '-translate-y-full' : 'translate-y-0'
-        }`}
+        className={`fixed left-0 right-0 shadow-elevation-4 transition-transform duration-300 ease-out ${isAnimating ? '-translate-y-full' : 'translate-y-0'
+          }`}
         style={{
           top: 0,
           height: `${terminalHeight}px`,
@@ -166,7 +194,7 @@ export function QuakeTerminal() {
         <div className="absolute inset-0 bg-white dark:bg-stone-900" />
 
         {/* Terminal content */}
-        <div className="relative flex flex-col h-full overflow-hidden rounded-b-xl border-b border-stone-200 dark:border-stone-800">
+        <div className="relative flex flex-col h-full overflow-hidden rounded-b-xl border-b border-stone-200 dark:border-stone-800" style={{ width: '100%', maxWidth: '100vw', overflowX: 'hidden' }}>
           {/* Header */}
           <TerminalHeader
             status={globalTerminalStatus}
@@ -185,7 +213,7 @@ export function QuakeTerminal() {
               onError={handleError}
             />
           ) : (
-            <div className="flex-1 flex items-center justify-center text-stone-500 dark:text-stone-400">
+            <div className="flex-1 flex items-center justify-center text-stone-500 dark:text-stone-400" style={{ width: '100%', maxWidth: '100%' }}>
               <div className="text-center">
                 <svg
                   className="w-12 h-12 mx-auto mb-4 text-stone-400 dark:text-stone-600 animate-spin"

@@ -169,7 +169,7 @@ export function TerminalEmulator({
     if (!terminalRef.current || xtermRef.current) return;
 
     const terminal = new Terminal({
-      fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+      fontFamily: "'JetBrains Mono Variable', 'SF Mono', 'Monaco', 'Inconsolata', 'Consolas', 'Courier New', monospace",
       fontSize: 14,
       lineHeight: 1.4,
       cursorBlink: true,
@@ -221,7 +221,7 @@ export function TerminalEmulator({
     }
 
     // Delay fit() until DOM is fully rendered (fixes dimensions error)
-    setTimeout(() => {
+    const initTimeout = setTimeout(() => {
       fitAddon.fit();
       terminal.refresh(0, terminal.rows - 1); // Force refresh all rows
     }, 100);
@@ -254,6 +254,7 @@ export function TerminalEmulator({
 
     // Cleanup
     return () => {
+      clearTimeout(initTimeout);
       resizeObserver.disconnect();
       terminal.dispose();
       xtermRef.current = null;
@@ -280,110 +281,116 @@ export function TerminalEmulator({
       eventSource = terminalService.connectStream(sessionId);
       eventSourceRef.current = eventSource;
 
-    const pingStartTime = Date.now();
+      const pingStartTime = Date.now();
 
-    // Handle 'connected' event - sent when SSE connection established
-    eventSource.addEventListener('connected', (event: Event) => {
-      const messageEvent = event as MessageEvent;
-      const data = JSON.parse(messageEvent.data);
+      // Handle 'connected' event - sent when SSE connection established
+      eventSource.addEventListener('connected', (event: Event) => {
+        const messageEvent = event as MessageEvent;
+        const data = JSON.parse(messageEvent.data);
 
-      onStatusChange('connected');
+        if (xtermRef.current) {
+          xtermRef.current.write(`\x1b[32mConnected to sandbox ${data.sandboxId}\x1b[0m\r\n`);
+          ensurePrompt();
+          xtermRef.current.refresh(0, xtermRef.current.rows - 1);
 
-      if (xtermRef.current) {
-        xtermRef.current.write(`\x1b[32mConnected to sandbox ${data.sandboxId}\x1b[0m\r\n`);
+          // Small delay to ensure terminal is fully rendered before signaling connected
+          // This helps prevent race conditions on mobile/slower devices
+          setTimeout(() => {
+            onStatusChange('connected');
+          }, 50);
+        } else {
+          console.error('[TerminalEmulator] xtermRef is null when trying to write connected message!');
+          // Still signal connected even if write fails
+          onStatusChange('connected');
+        }
+
+        logger.debug('SSE connected', data);
+      });
+
+      // Handle 'output' event - command stdout/stderr
+      eventSource.addEventListener('output', (event: Event) => {
+        const messageEvent = event as MessageEvent;
+        const data = JSON.parse(messageEvent.data);
+
+        if (xtermRef.current) {
+          // Write stdout (convert \n to \r\n for proper line breaks)
+          if (data.stdout) {
+            const output = data.stdout.replace(/\n/g, '\r\n');
+            xtermRef.current.write(output);
+          }
+
+          // Write stderr in red (convert \n to \r\n for proper line breaks)
+          if (data.stderr) {
+            const output = data.stderr.replace(/\n/g, '\r\n');
+            xtermRef.current.write(`\x1b[31m${output}\x1b[0m`);
+          }
+        }
+      });
+
+      // Handle 'complete' event - command finished
+      eventSource.addEventListener('complete', (event: Event) => {
+        const messageEvent = event as MessageEvent;
+        const data = JSON.parse(messageEvent.data);
+
+        if (xtermRef.current) {
+          // Show prompt after command completes
+          if (!promptShownRef.current) {
+            promptShownRef.current = true;
+          }
+          xtermRef.current.write('\r\n$ ');
+        }
+
+        logger.debug('Command complete', data);
+      });
+
+      // Handle 'error' event - command execution error
+      eventSource.addEventListener('error', (event: Event) => {
+        // Guard against transport errors which don't have data property
+        if (!(event instanceof MessageEvent) || !event.data) {
+          logger.debug('SSE transport error (no data), ignoring custom error handler');
+          return;
+        }
+
+        const data = JSON.parse(event.data);
+
+        const errorMsg = data.error || 'Unknown error';
+        onError(errorMsg);
+
+        if (xtermRef.current) {
+          // Error message already has \r\n at end - no conversion needed here
+          xtermRef.current.write(`\x1b[31m[Error: ${errorMsg}]\x1b[0m\r\n`);
+          xtermRef.current.write('$ '); // Show prompt after error
+        }
+      });
+
+      // Handle 'heartbeat' event - keepalive
+      eventSource.addEventListener('heartbeat', (event: Event) => {
+        const messageEvent = event as MessageEvent;
+        const data = JSON.parse(messageEvent.data);
+
+        // Calculate latency from heartbeat timestamp
+        const latency = Date.now() - (data.timestamp || pingStartTime);
+        onLatencyUpdate(latency);
+      });
+
+      // Handle generic onopen (connection established)
+      eventSource.onopen = () => {
+        // Note: 'connected' event will provide actual session info
         ensurePrompt();
-        xtermRef.current.refresh(0, xtermRef.current.rows - 1);
-      } else {
-        console.error('[TerminalEmulator] xtermRef is null when trying to write connected message!');
-      }
+      };
 
-      logger.debug('SSE connected', data);
-    });
+      // Handle generic onerror (connection lost - reconnect)
+      eventSource.onerror = (error) => {
+        logger.error('EventSource error', error);
+        onStatusChange('error');
+        onError('Connection lost. Reconnecting...');
 
-    // Handle 'output' event - command stdout/stderr
-    eventSource.addEventListener('output', (event: Event) => {
-      const messageEvent = event as MessageEvent;
-      const data = JSON.parse(messageEvent.data);
-
-      if (xtermRef.current) {
-        // Write stdout (convert \n to \r\n for proper line breaks)
-        if (data.stdout) {
-          const output = data.stdout.replace(/\n/g, '\r\n');
-          xtermRef.current.write(output);
-        }
-
-        // Write stderr in red (convert \n to \r\n for proper line breaks)
-        if (data.stderr) {
-          const output = data.stderr.replace(/\n/g, '\r\n');
-          xtermRef.current.write(`\x1b[31m${output}\x1b[0m`);
-        }
-      }
-    });
-
-    // Handle 'complete' event - command finished
-    eventSource.addEventListener('complete', (event: Event) => {
-      const messageEvent = event as MessageEvent;
-      const data = JSON.parse(messageEvent.data);
-
-      if (xtermRef.current) {
-        // Show prompt after command completes
-        if (!promptShownRef.current) {
-          promptShownRef.current = true;
-        }
-        xtermRef.current.write('\r\n$ ');
-      }
-
-      logger.debug('Command complete', data);
-    });
-
-    // Handle 'error' event - command execution error
-    eventSource.addEventListener('error', (event: Event) => {
-      // Guard against transport errors which don't have data property
-      if (!(event instanceof MessageEvent) || !event.data) {
-        logger.debug('SSE transport error (no data), ignoring custom error handler');
-        return;
-      }
-
-      const data = JSON.parse(event.data);
-
-      const errorMsg = data.error || 'Unknown error';
-      onError(errorMsg);
-
-      if (xtermRef.current) {
-        // Error message already has \r\n at end - no conversion needed here
-        xtermRef.current.write(`\x1b[31m[Error: ${errorMsg}]\x1b[0m\r\n`);
-        xtermRef.current.write('$ '); // Show prompt after error
-      }
-    });
-
-    // Handle 'heartbeat' event - keepalive
-    eventSource.addEventListener('heartbeat', (event: Event) => {
-      const messageEvent = event as MessageEvent;
-      const data = JSON.parse(messageEvent.data);
-
-      // Calculate latency from heartbeat timestamp
-      const latency = Date.now() - (data.timestamp || pingStartTime);
-      onLatencyUpdate(latency);
-    });
-
-    // Handle generic onopen (connection established)
-    eventSource.onopen = () => {
-      // Note: 'connected' event will provide actual session info
-      ensurePrompt();
-    };
-
-    // Handle generic onerror (connection lost - reconnect)
-    eventSource.onerror = (error) => {
-      logger.error('EventSource error', error);
-      onStatusChange('error');
-      onError('Connection lost. Reconnecting...');
-
-      // Auto-reconnect after 2 seconds
-      reconnectTimeout = setTimeout(() => {
-        logger.debug('Reconnecting SSE...');
-        connect();
-      }, 2000);
-    };
+        // Auto-reconnect after 2 seconds
+        reconnectTimeout = setTimeout(() => {
+          logger.debug('Reconnecting SSE...');
+          connect();
+        }, 2000);
+      };
     };
 
     // Start initial connection

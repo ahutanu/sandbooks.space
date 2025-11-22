@@ -95,7 +95,7 @@ export function TerminalFooter({ onCommand, isConnected }: TerminalFooterProps) 
   ];
 
   return (
-    <div className="md:hidden flex-shrink-0 border-t border-stone-200/50 dark:border-stone-700/50">
+    <div className="relative md:hidden flex-shrink-0 border-t border-stone-200/50 dark:border-stone-700/50">
       {/* Glass morphism background */}
       <div className="absolute inset-0 bg-white/85 dark:bg-stone-900/90 backdrop-blur-md" />
 
@@ -134,13 +134,12 @@ export function TerminalFooter({ onCommand, isConnected }: TerminalFooterProps) 
                      focus-visible:outline-none focus-visible:ring-3
                      focus-visible:ring-blue-600/50 focus-visible:ring-offset-2
                      focus-visible:ring-offset-white dark:focus-visible:ring-offset-stone-900
-                     min-h-[44px] ${
-                       pasteStatus === 'success'
-                         ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-                         : pasteStatus === 'error'
-                         ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
-                         : 'bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-700 active:scale-95'
-                     }`}
+                     min-h-[44px] ${pasteStatus === 'success'
+              ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+              : pasteStatus === 'error'
+                ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
+                : 'bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-700 active:scale-95'
+            }`}
           aria-label="Paste from clipboard"
         >
           <span className="text-stone-600 dark:text-stone-400">
