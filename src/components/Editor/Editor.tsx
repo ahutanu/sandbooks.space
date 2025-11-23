@@ -6,12 +6,33 @@ import TaskList from '@tiptap/extension-task-list';
 import TaskItem from '@tiptap/extension-task-item';
 import Highlight from '@tiptap/extension-highlight';
 import Placeholder from '@tiptap/extension-placeholder';
+import Underline from '@tiptap/extension-underline';
+import Typography from '@tiptap/extension-typography';
+import Link from '@tiptap/extension-link';
+import Color from '@tiptap/extension-color';
+import { TextStyle } from '@tiptap/extension-text-style';
+import FontFamily from '@tiptap/extension-font-family';
+import Superscript from '@tiptap/extension-superscript';
+import Subscript from '@tiptap/extension-subscript';
+import TextAlign from '@tiptap/extension-text-align';
+import { Table } from '@tiptap/extension-table';
+import TableRow from '@tiptap/extension-table-row';
+import TableCell from '@tiptap/extension-table-cell';
+import TableHeader from '@tiptap/extension-table-header';
+import YouTube from '@tiptap/extension-youtube';
+import Mention from '@tiptap/extension-mention';
+import CharacterCount from '@tiptap/extension-character-count';
+import Focus from '@tiptap/extension-focus';
 import equal from 'fast-deep-equal';
 import { ExecutableCodeBlock } from './executableCodeBlockExtension';
 import { MarkdownInputRules } from './markdownInputRules';
 import { SmartWritingBehaviors } from './smartWritingBehaviors';
 import { SlashCommands } from './extensions/slashCommands';
 import { FocusMode } from './extensions/FocusMode';
+import { FontSize } from './extensions/FontSize';
+import { Video } from './extensions/Video';
+import { Audio } from './extensions/Audio';
+import { File } from './extensions/File';
 import { MinimalTagDisplay } from '../Tags';
 import { ImageUploadModal } from './ImageUploadModal';
 import { CodeMirrorBlock } from '../CodeMirror/CodeMirrorBlock';
@@ -20,9 +41,14 @@ import { useTypewriterMode } from '../../hooks/useTypewriterMode';
 import { useNotesStore } from '../../store/notesStore';
 import type { Note } from '../../types';
 import type { JSONContent } from '@tiptap/core';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import clsx from 'clsx';
 import { VscCode } from 'react-icons/vsc';
+import { LinkPopover } from './LinkPopover';
+import { ColorPicker } from './ColorPicker';
+import { FontControls } from './FontControls';
+import { BubbleMenu } from './BubbleMenu';
+import { FloatingMenu } from './FloatingMenu';
 
 interface EditorProps {
   note: Note;
@@ -31,19 +57,34 @@ interface EditorProps {
 
 export const Editor = ({ note, onUpdate }: EditorProps) => {
   const { typewriterModeEnabled, focusModeEnabled, addCodeBlock } = useNotesStore();
-  const [showLinkInput, setShowLinkInput] = useState(false);
-  const [linkUrl, setLinkUrl] = useState('');
   const [showImageModal, setShowImageModal] = useState(false);
   const [isDraggingFile, setIsDraggingFile] = useState(false);
   const [droppedFiles, setDroppedFiles] = useState<FileList | null>(null);
+  const [showLinkPopover, setShowLinkPopover] = useState(false);
+  const [showColorPicker, setShowColorPicker] = useState(false);
+  const [colorMode, setColorMode] = useState<'text' | 'highlight'>('text');
+  const [colorAnchor, setColorAnchor] = useState<HTMLElement | null>(null);
+  const [showFontControls, setShowFontControls] = useState(false);
+  const [fontAnchorElement, setFontAnchorElement] = useState<HTMLElement | null>(null);
+  const colorButtonRef = useRef<HTMLButtonElement>(null);
 
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
         codeBlock: false, // Disable default code block (using custom)
-        // Keep all other extensions enabled (blockquote, horizontalRule, etc.)
+        underline: false, // Use standalone Underline extension
+        link: false, // Use standalone Link extension
+        // TrailingNode, Gapcursor, Dropcursor are enabled by default in StarterKit v3
       }),
       ExecutableCodeBlock,
+      Underline,
+      Link.configure({
+        openOnClick: false,
+        HTMLAttributes: {
+          class: 'text-blue-600 dark:text-blue-400 hover:underline transition-colors duration-200',
+        },
+      }),
+      Typography,
       Image.configure({
         inline: false, // Block-level display
         allowBase64: true,
@@ -63,11 +104,67 @@ export const Editor = ({ note, onUpdate }: EditorProps) => {
         },
       }),
       Highlight.configure({
-        multicolor: false,
+        multicolor: true,
         HTMLAttributes: {
-          class: 'bg-yellow-200 px-1 rounded',
+          class: 'px-1 rounded',
         },
       }),
+      Color,
+      TextStyle,
+      FontFamily.configure({
+        types: ['textStyle'],
+      }),
+      FontSize,
+      Superscript,
+      Subscript,
+      TextAlign.configure({
+        types: ['heading', 'paragraph'],
+      }),
+      Table.configure({
+        resizable: true,
+        HTMLAttributes: {
+          class: 'w-full border-collapse my-6 overflow-x-auto',
+        },
+      }),
+      TableRow,
+      TableHeader.configure({
+        HTMLAttributes: {
+          class: 'bg-stone-50 dark:bg-stone-800 font-semibold text-left border border-stone-200 dark:border-stone-700 px-4 py-3',
+        },
+      }),
+      TableCell.configure({
+        HTMLAttributes: {
+          class: 'border border-stone-200 dark:border-stone-700 px-4 py-3 text-stone-900 dark:text-stone-50',
+        },
+      }),
+      // Gapcursor and Dropcursor are included in StarterKit v3 by default
+      YouTube.configure({
+        HTMLAttributes: {
+          class: 'w-full max-w-[650px] mx-auto my-8 aspect-video rounded-lg shadow-elevation-2',
+        },
+      }),
+      Video.configure({
+        HTMLAttributes: {
+          class: 'w-full max-w-[650px] mx-auto my-8 aspect-video rounded-lg shadow-elevation-2',
+        },
+      }),
+      Audio.configure({
+        HTMLAttributes: {
+          class: 'w-full max-w-[650px] mx-auto my-6 bg-stone-50 dark:bg-stone-800/50 border border-stone-200 dark:border-stone-700 rounded-lg p-4 shadow-elevation-1',
+        },
+      }),
+      File.configure({
+        HTMLAttributes: {
+          class: 'w-full max-w-[650px] mx-auto my-6 bg-stone-50 dark:bg-stone-800/50 border border-stone-200 dark:border-stone-700 rounded-lg p-4 shadow-elevation-1',
+        },
+      }),
+      Mention.configure({
+        HTMLAttributes: {
+          class: 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-1.5 py-0.5 rounded-md font-medium hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors duration-200',
+        },
+      }),
+      CharacterCount,
+      Focus,
       Placeholder.configure({
         placeholder: 'Start writing... (Press ? for help, / for commands)',
       }),
@@ -86,6 +183,7 @@ export const Editor = ({ note, onUpdate }: EditorProps) => {
     editorProps: {
       attributes: {
         class: 'prose prose-stone max-w-none focus:outline-none min-h-full px-4 md:px-12 py-6 md:py-12',
+        style: 'font-family: "JetBrains Mono Variable", "SF Mono", "Menlo", "Monaco", "Courier New", monospace;',
       },
     },
   });
@@ -141,41 +239,24 @@ export const Editor = ({ note, onUpdate }: EditorProps) => {
   // Typewriter mode - keep cursor centered while typing
   useTypewriterMode(editor, typewriterModeEnabled);
 
-  const setLink = useCallback(() => {
+  // Handle Cmd+K for link insertion
+  useEffect(() => {
     if (!editor) return;
 
-    // If empty URL, remove link
-    if (linkUrl === '' || linkUrl.trim() === '') {
-      editor.chain().focus().extendMarkRange('link').unsetLink().run();
-      setShowLinkInput(false);
-      setLinkUrl('');
-      return;
-    }
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k' && !e.shiftKey && !e.altKey) {
+        const target = e.target as HTMLElement;
+        if (target.classList.contains('ProseMirror') || target.closest('.ProseMirror')) {
+          e.preventDefault();
+          setShowLinkPopover(true);
+        }
+      }
+    };
 
-    // Handle URLs without protocol (add https://)
-    const url = linkUrl.startsWith('http://') || linkUrl.startsWith('https://')
-      ? linkUrl
-      : `https://${linkUrl}`;
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [editor]);
 
-    // Get current selection
-    const { from, to } = editor.state.selection;
-    const hasSelection = from !== to;
-
-    if (hasSelection) {
-      // If text is selected, apply link to selection
-      editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
-    } else {
-      // If no selection, insert link with URL as text
-      editor.chain().focus().insertContent({
-        type: 'text',
-        marks: [{ type: 'link', attrs: { href: url } }],
-        text: linkUrl,
-      }).run();
-    }
-
-    setShowLinkInput(false);
-    setLinkUrl('');
-  }, [editor, linkUrl]);
 
   const addImage = useCallback(() => {
     setShowImageModal(true);
@@ -222,54 +303,24 @@ export const Editor = ({ note, onUpdate }: EditorProps) => {
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden bg-white dark:bg-stone-900">
-      {/* Link Input Modal */}
-      {showLinkInput && (
-        <div className="fixed inset-0 bg-stone-900/40 dark:bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 animate-fadeIn">
-          <div className="bg-white dark:bg-stone-900 rounded-xl border border-stone-200 dark:border-stone-800 p-6 max-w-md w-full mx-4 shadow-elevation-4 animate-scaleIn">
-            <h3 className="text-lg font-bold mb-5 text-stone-900 dark:text-stone-50 tracking-tight">Insert Link</h3>
-            <div className="mb-6">
-              <label className="block text-xs font-semibold uppercase tracking-wider text-stone-500 dark:text-stone-400 mb-2">
-                Link URL
-              </label>
-              <input
-                type="text"
-                value={linkUrl}
-                onChange={(e) => setLinkUrl(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    setLink();
-                  } else if (e.key === 'Escape') {
-                    setShowLinkInput(false);
-                    setLinkUrl('');
-                  }
-                }}
-                placeholder="https://example.com"
-                className="w-full px-3 py-2.5 text-sm border border-stone-200 dark:border-stone-700 rounded-lg bg-stone-50 dark:bg-stone-800/50 text-stone-900 dark:text-stone-50 placeholder-stone-400 dark:placeholder-stone-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all duration-200"
-                aria-label="Link URL"
-                autoFocus
-              />
-            </div>
-            <div className="flex gap-3 justify-end">
-              <button
-                onClick={() => {
-                  setShowLinkInput(false);
-                  setLinkUrl('');
-                }}
-                className="px-4 py-2 text-sm font-medium text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-lg transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-400"
-                aria-label="Cancel link insertion"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={setLink}
-                className="px-4 py-2 text-sm font-medium bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 rounded-lg hover:bg-stone-800 dark:hover:bg-white shadow-sm hover:shadow transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-500 focus-visible:ring-offset-2"
-                aria-label="Insert link"
-              >
-                Insert Link
-              </button>
-            </div>
-          </div>
-        </div>
+      {/* Link Popover */}
+      {showLinkPopover && editor && (
+        <LinkPopover
+          editor={editor}
+          onClose={() => setShowLinkPopover(false)}
+          initialUrl={editor.getAttributes('link').href || ''}
+        />
+      )}
+
+      {/* Color Picker */}
+      {showColorPicker && editor && colorAnchor && (
+        <ColorPicker
+          editor={editor}
+          onClose={() => setShowColorPicker(false)}
+          anchorElement={colorAnchor}
+          mode={colorMode}
+          onModeChange={setColorMode}
+        />
       )}
 
       {/* Image Upload Modal */}
@@ -329,9 +380,25 @@ export const Editor = ({ note, onUpdate }: EditorProps) => {
                   : 'text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200 hover:bg-stone-200/50 dark:hover:bg-stone-700/50'
               )}
               title="Strikethrough"
+              aria-label="Strikethrough"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12h18M9 5l6 14M15 5l-6 14" />
+              </svg>
+            </button>
+            <button
+              onClick={() => editor.chain().focus().toggleUnderline().run()}
+              className={clsx(
+                'p-2 rounded-md transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500',
+                editor.isActive('underline')
+                  ? 'bg-white dark:bg-stone-700 text-stone-900 dark:text-stone-50 shadow-sm'
+                  : 'text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200 hover:bg-stone-200/50 dark:hover:bg-stone-700/50'
+              )}
+              title="Underline (⌘U)"
+              aria-label="Underline (⌘U)"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 19h14M5 5h14" />
               </svg>
             </button>
             <button
@@ -343,9 +410,161 @@ export const Editor = ({ note, onUpdate }: EditorProps) => {
                   : 'text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200 hover:bg-stone-200/50 dark:hover:bg-stone-700/50'
               )}
               title="Highlight"
+              aria-label="Highlight"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10M12 3v18M3 12l9-9 9 9" />
+              </svg>
+            </button>
+            <button
+              ref={colorButtonRef}
+              onClick={(e) => {
+                setColorAnchor(e.currentTarget);
+                setShowColorPicker(true);
+              }}
+              className={clsx(
+                'p-2 rounded-md transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500',
+                editor.isActive('textStyle') || editor.isActive('highlight')
+                  ? 'bg-white dark:bg-stone-700 text-stone-900 dark:text-stone-50 shadow-sm'
+                  : 'text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200 hover:bg-stone-200/50 dark:hover:bg-stone-700/50'
+              )}
+              title="Color"
+              aria-label="Color"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+              </svg>
+            </button>
+          </div>
+
+          <div className="w-px h-6 bg-stone-200 dark:bg-stone-800 mx-2" />
+
+          {/* Font Group */}
+          <div className="flex items-center gap-0.5 bg-stone-100 dark:bg-stone-800/50 p-1 rounded-lg">
+            {showFontControls && fontAnchorElement && (
+              <FontControls
+                editor={editor}
+                onClose={() => setShowFontControls(false)}
+                anchorElement={fontAnchorElement}
+              />
+            )}
+            <button
+              ref={(el) => {
+                if (el) {
+                  setFontAnchorElement(el);
+                } else {
+                  setFontAnchorElement(null);
+                }
+              }}
+              onClick={() => setShowFontControls(!showFontControls)}
+              className="p-2 text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200 hover:bg-stone-200/50 dark:hover:bg-stone-700/50 rounded-md transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              title="Font"
+              aria-label="Font"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+          </div>
+
+          <div className="w-px h-6 bg-stone-200 dark:bg-stone-800 mx-2" />
+
+          {/* Superscript/Subscript Group */}
+          <div className="flex items-center gap-0.5 bg-stone-100 dark:bg-stone-800/50 p-1 rounded-lg">
+            <button
+              onClick={() => editor.chain().focus().toggleSuperscript().run()}
+              className={clsx(
+                'p-2 rounded-md transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500',
+                editor.isActive('superscript')
+                  ? 'bg-white dark:bg-stone-700 text-stone-900 dark:text-stone-50 shadow-sm'
+                  : 'text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200 hover:bg-stone-200/50 dark:hover:bg-stone-700/50'
+              )}
+              title="Superscript (⌘⇧=)"
+              aria-label="Superscript (⌘⇧=)"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <text x="4" y="16" fontSize="12" fontWeight="bold" fill="currentColor">x²</text>
+              </svg>
+            </button>
+            <button
+              onClick={() => editor.chain().focus().toggleSubscript().run()}
+              className={clsx(
+                'p-2 rounded-md transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500',
+                editor.isActive('subscript')
+                  ? 'bg-white dark:bg-stone-700 text-stone-900 dark:text-stone-50 shadow-sm'
+                  : 'text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200 hover:bg-stone-200/50 dark:hover:bg-stone-700/50'
+              )}
+              title="Subscript (⌘⇧-)"
+              aria-label="Subscript (⌘⇧-)"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <text x="4" y="18" fontSize="12" fontWeight="bold" fill="currentColor">x₂</text>
+              </svg>
+            </button>
+          </div>
+
+          <div className="w-px h-6 bg-stone-200 dark:bg-stone-800 mx-2" />
+
+          {/* Alignment Group */}
+          <div className="flex items-center gap-0.5 bg-stone-100 dark:bg-stone-800/50 p-1 rounded-lg">
+            <button
+              onClick={() => editor.chain().focus().setTextAlign('left').run()}
+              className={clsx(
+                'p-2 rounded-md transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500',
+                editor.isActive({ textAlign: 'left' })
+                  ? 'bg-white dark:bg-stone-700 text-stone-900 dark:text-stone-50 shadow-sm'
+                  : 'text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200 hover:bg-stone-200/50 dark:hover:bg-stone-700/50'
+              )}
+              title="Align Left"
+              aria-label="Align Left"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M3 6h18M3 14h18M3 18h18" />
+              </svg>
+            </button>
+            <button
+              onClick={() => editor.chain().focus().setTextAlign('center').run()}
+              className={clsx(
+                'p-2 rounded-md transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500',
+                editor.isActive({ textAlign: 'center' })
+                  ? 'bg-white dark:bg-stone-700 text-stone-900 dark:text-stone-50 shadow-sm'
+                  : 'text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200 hover:bg-stone-200/50 dark:hover:bg-stone-700/50'
+              )}
+              title="Align Center"
+              aria-label="Align Center"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M6 6h12M6 14h12M3 18h18" />
+              </svg>
+            </button>
+            <button
+              onClick={() => editor.chain().focus().setTextAlign('right').run()}
+              className={clsx(
+                'p-2 rounded-md transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500',
+                editor.isActive({ textAlign: 'right' })
+                  ? 'bg-white dark:bg-stone-700 text-stone-900 dark:text-stone-50 shadow-sm'
+                  : 'text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200 hover:bg-stone-200/50 dark:hover:bg-stone-700/50'
+              )}
+              title="Align Right"
+              aria-label="Align Right"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M3 6h18M3 14h18M3 18h18" />
+              </svg>
+            </button>
+            <button
+              onClick={() => editor.chain().focus().setTextAlign('justify').run()}
+              className={clsx(
+                'p-2 rounded-md transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500',
+                editor.isActive({ textAlign: 'justify' })
+                  ? 'bg-white dark:bg-stone-700 text-stone-900 dark:text-stone-50 shadow-sm'
+                  : 'text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200 hover:bg-stone-200/50 dark:hover:bg-stone-700/50'
+              )}
+              title="Justify"
+              aria-label="Justify"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M3 6h18M3 14h18M3 18h18" />
               </svg>
             </button>
           </div>
@@ -411,17 +630,28 @@ export const Editor = ({ note, onUpdate }: EditorProps) => {
           {/* Insert Group */}
           <div className="flex items-center gap-0.5 bg-stone-100 dark:bg-stone-800/50 p-1 rounded-lg">
             <button
-              onClick={() => setShowLinkInput(true)}
+              onClick={() => setShowLinkPopover(true)}
               className={clsx(
                 'p-2 rounded-md transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500',
                 editor.isActive('link')
                   ? 'bg-white dark:bg-stone-700 text-stone-900 dark:text-stone-50 shadow-sm'
                   : 'text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200 hover:bg-stone-200/50 dark:hover:bg-stone-700/50'
               )}
-              title="Insert Link"
+              title="Insert Link (⌘K)"
+              aria-label="Insert Link (⌘K)"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+              </svg>
+            </button>
+            <button
+              onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}
+              className="p-2 text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200 hover:bg-stone-200/50 dark:hover:bg-stone-700/50 rounded-md transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              title="Insert Table"
+              aria-label="Insert Table"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
               </svg>
             </button>
             <button
@@ -497,6 +727,8 @@ export const Editor = ({ note, onUpdate }: EditorProps) => {
             </div>
           )}
           <EditorContent editor={editor} />
+          {editor && <BubbleMenu editor={editor} />}
+          {editor && <FloatingMenu editor={editor} />}
         </div>
 
         {/* Code Blocks (separate from TipTap) */}
@@ -516,6 +748,17 @@ export const Editor = ({ note, onUpdate }: EditorProps) => {
         <div className="max-w-[650px] mx-auto w-full">
           <MinimalTagDisplay noteId={note.id} tags={note.tags || []} />
         </div>
+
+        {/* Character Count */}
+        {editor && editor.storage.characterCount && (
+          <div className="fixed bottom-4 right-4 bg-white/90 dark:bg-stone-900/90 backdrop-blur-sm border border-stone-200 dark:border-stone-700 rounded-lg px-3 py-1.5 shadow-elevation-1 z-40">
+            <div className="text-xs text-stone-500 dark:text-stone-400 font-mono space-x-2">
+              <span>{editor.storage.characterCount.words()} words</span>
+              <span>•</span>
+              <span>{editor.storage.characterCount.characters()} characters</span>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

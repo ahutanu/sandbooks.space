@@ -160,6 +160,7 @@ module.exports = {
       addComponents({
         '.prose': {
           '@apply text-stone-800 dark:text-stone-200 leading-normal bg-transparent': {}, // 1.5 line height (WCAG AAA compliant), transparent to inherit parent bg
+          fontFamily: '"JetBrains Mono Variable", "SF Mono", "Menlo", "Monaco", "Courier New", monospace',
         },
         '.prose h1': {
           '@apply text-4xl font-bold text-stone-900 dark:text-stone-50 mt-12 mb-6 leading-tight tracking-tight': {},

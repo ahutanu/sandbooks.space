@@ -148,6 +148,51 @@ export const slashCommandItems: SlashCommandItem[] = [
         .run();
     },
   },
+  {
+    title: 'Table',
+    description: 'Insert a table',
+    searchTerms: ['table', 'grid', 'rows', 'columns'],
+    icon: 'Table',
+    command: ({ editor, range }) => {
+      editor
+        .chain()
+        .focus()
+        .deleteRange(range)
+        .insertTable({ rows: 3, cols: 3, withHeaderRow: true })
+        .run();
+    },
+  },
+  {
+    title: 'YouTube',
+    description: 'Embed a YouTube video',
+    searchTerms: ['youtube', 'video', 'embed', 'yt'],
+    icon: 'YouTube',
+    command: ({ editor, range }) => {
+      editor
+        .chain()
+        .focus()
+        .deleteRange(range)
+        .insertContent({
+          type: 'youtube',
+          attrs: { src: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' },
+        })
+        .run();
+    },
+  },
+  {
+    title: 'Image',
+    description: 'Insert an image',
+    searchTerms: ['image', 'img', 'picture', 'photo'],
+    icon: 'Image',
+    command: ({ editor, range }) => {
+      editor
+        .chain()
+        .focus()
+        .deleteRange(range)
+        .setImage({ src: '' })
+        .run();
+    },
+  },
 ];
 
 export const SlashCommands = Extension.create({

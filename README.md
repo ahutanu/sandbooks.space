@@ -33,9 +33,14 @@
 ### Core Capabilities
 
 - 💻 **Executable Code Blocks**: Run Python, JavaScript, TypeScript, Bash, and Go directly in your notes
-- 📝 **Rich Text Editing**: TipTap-based editor with formatting, lists, links, images, and task lists
+- 📝 **Rich Text Editing**: TipTap v3-based editor with comprehensive formatting, tables, media embeds, and more
+  - **Text Formatting**: Bold, Italic, Strike, Underline, Highlight, Text Color, Font Family/Size, Superscript/Subscript
+  - **Layout**: Text Alignment (Left/Center/Right/Justify), Tables with full editing, Multi-column layouts
+  - **Media**: Images, YouTube embeds, Video, Audio, File attachments
+  - **Interactive**: @Mentions, Character Count, BubbleMenu, FloatingMenu
+  - **Smart Features**: Typography (smart quotes, dashes), TrailingNode, Gapcursor, Dropcursor
 - 🔍 **Global Search**: Instant search with `/` or `Cmd+K` (keyboard navigable)
-- ⌨️ **Keyboard Shortcuts**: 26 shortcuts organized by category (press `?` to view all)
+- ⌨️ **Keyboard Shortcuts**: 40+ shortcuts organized by category (press `?` to view all)
 - 🌙 **Dark Mode**: Complete dark theme with system preference detection
 - 📱 **Mobile Responsive**: Hamburger menu, slide-in sidebar, touch-optimized UI
 - ♿ **Accessibility**: WCAG 2.1 AA compliant (keyboard navigation, screen reader support)
@@ -126,13 +131,19 @@ Press `?` to see all shortcuts, or use these common ones:
 
 **Power User**:
 - `Cmd+Alt+N / Ctrl+Alt+N` - Create new note (Global)
-- `Cmd+K / Ctrl+K` - Search (VS Code style)
+- `Cmd+K / Ctrl+K` - Search (VS Code style) or Insert Link (in editor)
 - `Cmd+\ / Ctrl+\` - Toggle sidebar
 - `Ctrl+`` - Toggle terminal (Global)
 - `Cmd+Enter / Ctrl+Enter` - Run code block
 - `Cmd+B / Ctrl+B` - Bold
 - `Cmd+I / Ctrl+I` - Italic
 - `Cmd+U / Ctrl+U` - Underline
+- `Cmd+Shift+C / Ctrl+Shift+C` - Text color
+- `Cmd+Shift+X / Ctrl+Shift+X` - Highlight color
+- `Cmd+Shift+T / Ctrl+Shift+T` - Insert table
+- `Cmd+Shift+L/E/R/J / Ctrl+Shift+L/E/R/J` - Align left/center/right/justify
+- `Cmd+. / Ctrl+.` - Superscript
+- `Cmd+, / Ctrl+,` - Subscript
 
 ### Example Code
 
@@ -253,7 +264,7 @@ NODE_ENV=development           # Environment
 | [React](https://reactjs.org/) | 18.3 | UI framework |
 | [TypeScript](https://www.typescriptlang.org/) | 5.6 | Type safety |
 | [Vite](https://vitejs.dev/) | 6.0 | Build tool & dev server |
-| [TipTap](https://tiptap.dev/) | 2.11+ | Rich text editor (ProseMirror) |
+| [TipTap](https://tiptap.dev/) | 3.11+ | Rich text editor (ProseMirror) with full v3 features |
 | [TailwindCSS](https://tailwindcss.com/) | 3.4 | Utility-first CSS |
 | [Zustand](https://github.com/pmndrs/zustand) | 5.0 | State management |
 | [xterm.js](https://xtermjs.org/) | 5.5 | Terminal emulator |
@@ -291,13 +302,14 @@ npm run test:headed
 ### Test Coverage
 
 - ✅ Code execution (all 5 languages)
-- ✅ Rich text editing (formatting, lists, links)
+- ✅ Rich text editing (formatting, lists, links, tables, media)
 - ✅ Terminal sessions (state persistence)
 - ✅ Tag system (creation, search, colors)
-- ✅ Keyboard shortcuts (26 shortcuts)
+- ✅ Keyboard shortcuts (40+ shortcuts)
 - ✅ Dark mode toggle
 - ✅ Mobile responsive layout
 - ✅ Search functionality
+- ✅ TipTap v3 features (color, alignment, tables, media embeds)
 
 ---
 
