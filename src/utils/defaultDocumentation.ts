@@ -625,5 +625,139 @@ export function createDefaultDocumentation(): Note[] {
     updatedAt: t8.note,
   });
 
+  // NOTE 9: Install as App (PWA)
+  const t9 = getTimestamps(8000);
+  notes.push({
+    id: nanoid(),
+    title: 'Install as App',
+    content: {
+      type: 'doc',
+      content: [
+        {
+          type: 'heading',
+          attrs: { level: 1 },
+          content: [{ type: 'text', text: 'Install Sandbooks as an App' }],
+        },
+        {
+          type: 'paragraph',
+          content: [{ type: 'text', text: 'Sandbooks is a Progressive Web App (PWA). Install it on your desktop or mobile device for quick access, offline support, and a native app experience.' }],
+        },
+        {
+          type: 'heading',
+          attrs: { level: 2 },
+          content: [{ type: 'text', text: 'Why Install?' }],
+        },
+        {
+          type: 'bulletList',
+          content: [
+            { type: 'listItem', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Quick access from your desktop or home screen' }] }] },
+            { type: 'listItem', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Works offline - view and edit notes without internet' }] }] },
+            { type: 'listItem', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Native app experience with standalone window' }] }] },
+            { type: 'listItem', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Automatic updates keep you on the latest version' }] }] },
+          ],
+        },
+        {
+          type: 'heading',
+          attrs: { level: 2 },
+          content: [{ type: 'text', text: 'How to Install' }],
+        },
+        {
+          type: 'heading',
+          attrs: { level: 3 },
+          content: [{ type: 'text', text: 'Chrome, Edge, or Brave (Desktop)' }],
+        },
+        {
+          type: 'orderedList',
+          content: [
+            { type: 'listItem', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Look for the install icon (⊕) in your browser\'s address bar' }] }] },
+            { type: 'listItem', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Click the icon and select "Install"' }] }] },
+            { type: 'listItem', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Sandbooks will open in its own window' }] }] },
+          ],
+        },
+        {
+          type: 'heading',
+          attrs: { level: 3 },
+          content: [{ type: 'text', text: 'Safari (macOS)' }],
+        },
+        {
+          type: 'orderedList',
+          content: [
+            { type: 'listItem', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Click Share (⊞) in the Safari toolbar' }] }] },
+            { type: 'listItem', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Select "Add to Dock" or "Add to Home Screen"' }] }] },
+            { type: 'listItem', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Launch Sandbooks from your Dock or home screen' }] }] },
+          ],
+        },
+        {
+          type: 'heading',
+          attrs: { level: 3 },
+          content: [{ type: 'text', text: 'Firefox (Desktop)' }],
+        },
+        {
+          type: 'orderedList',
+          content: [
+            { type: 'listItem', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Click the menu (☰) in the top-right corner' }] }] },
+            { type: 'listItem', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Select "Install" or "Add to Home Screen"' }] }] },
+            { type: 'listItem', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Confirm the installation' }] }] },
+          ],
+        },
+        {
+          type: 'heading',
+          attrs: { level: 3 },
+          content: [{ type: 'text', text: 'Mobile Devices' }],
+        },
+        {
+          type: 'orderedList',
+          content: [
+            { type: 'listItem', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'iOS: Tap Share → "Add to Home Screen"' }] }] },
+            { type: 'listItem', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Android: Tap the menu (⋮) → "Install app" or "Add to Home screen"' }] }] },
+            { type: 'listItem', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Launch Sandbooks from your home screen like any app' }] }] },
+          ],
+        },
+        {
+          type: 'heading',
+          attrs: { level: 2 },
+          content: [{ type: 'text', text: 'Offline Features' }],
+        },
+        {
+          type: 'paragraph',
+          content: [{ type: 'text', text: 'Once installed, Sandbooks works offline:' }],
+        },
+        {
+          type: 'bulletList',
+          content: [
+            { type: 'listItem', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'View and edit all your notes without internet' }] }] },
+            { type: 'listItem', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Code execution requests are queued when offline' }] }] },
+            { type: 'listItem', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Queued executions run automatically when you\'re back online' }] }] },
+            { type: 'listItem', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'All data stays on your device' }] }] },
+          ],
+        },
+        {
+          type: 'heading',
+          attrs: { level: 2 },
+          content: [{ type: 'text', text: 'Updates' }],
+        },
+        {
+          type: 'paragraph',
+          content: [{ type: 'text', text: 'Sandbooks updates automatically. When a new version is available, you\'ll see a notification. Click "Reload" to get the latest features and improvements.' }],
+        },
+        {
+          type: 'taskList',
+          content: [
+            { type: 'taskItem', attrs: { checked: false }, content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Install Sandbooks on your device' }] }] },
+            { type: 'taskItem', attrs: { checked: false }, content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Try using Sandbooks offline' }] }] },
+            { type: 'taskItem', attrs: { checked: false }, content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Check for updates in the app' }] }] },
+          ],
+        },
+      ],
+    },
+    tags: [
+      { id: nanoid(), name: 'pwa', color: 'blue', createdAt: t9.tag, updatedAt: t9.tag },
+      { id: nanoid(), name: 'getting-started', color: 'green', createdAt: t9.tag, updatedAt: t9.tag },
+    ],
+    codeBlocks: [],
+    createdAt: t9.note,
+    updatedAt: t9.note,
+  });
+
   return notes;
 }

@@ -63,4 +63,27 @@ describe('Toast Component', () => {
         expect(container.firstChild).toHaveClass('translate-y-2');
         expect(container.firstChild).toHaveClass('opacity-0');
     });
+
+    it('renders string messages in a p tag', () => {
+        const { container } = render(<Toast t={mockToast} message="String message" />);
+        const pTag = container.querySelector('p');
+        expect(pTag).toBeInTheDocument();
+        expect(pTag).toHaveTextContent('String message');
+    });
+
+    it('renders React nodes in a div tag to avoid invalid nesting', () => {
+        const reactNode = (
+            <div className="flex items-center gap-3">
+                <span>React node content</span>
+            </div>
+        );
+        const { container } = render(<Toast t={mockToast} message={reactNode} />);
+        // Should not have a p tag wrapping the div
+        const pTag = container.querySelector('p');
+        expect(pTag).not.toBeInTheDocument();
+        // Should have a div wrapper instead
+        const messageDiv = container.querySelector('.ml-3.flex-1 > div');
+        expect(messageDiv).toBeInTheDocument();
+        expect(messageDiv).toHaveTextContent('React node content');
+    });
 });

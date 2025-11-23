@@ -63,6 +63,7 @@ jobs:
         env:
           HOPX_API_KEY: ${{ secrets.HOPX_API_KEY }}
           API_ACCESS_TOKEN: ${{ secrets.API_ACCESS_TOKEN }}
+          GOOGLE_TAG_MANAGER_TAG: ${{ secrets.GOOGLE_TAG_MANAGER_TAG }}
           RESOURCE_GROUP: ${{ env.RESOURCE_GROUP }}
           AZ_LOCATION: ${{ env.AZ_LOCATION }}
           BACKEND_NAME: ${{ env.BACKEND_NAME }}

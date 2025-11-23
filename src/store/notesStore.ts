@@ -90,6 +90,9 @@ export const useNotesStore = create<NotesStore>((set, get) => ({
   lastSyncedAt: null,
   storageType: 'localStorage',
   storageName: 'Local Storage',
+  // Offline queue state
+  isOnline: typeof navigator !== 'undefined' ? navigator.onLine : true,
+  offlineQueue: [],
 
   addNote: (note: Note) => {
     set((state) => {
@@ -806,6 +809,22 @@ export const useNotesStore = create<NotesStore>((set, get) => ({
       throw new Error('Code block not found');
     }
 
+    const state = get();
+
+    // Check if offline - queue execution instead
+    if (!state.isOnline) {
+      state.queueCodeExecution(noteId, blockId, block.code, block.language);
+      state.updateCodeBlock(noteId, blockId, {
+        output: {
+          error: 'Offline - execution queued. Will run when connection is restored.',
+        },
+      });
+      toast.custom('📡 Code execution queued for when you\'re back online', {
+        duration: 4000,
+      });
+      return;
+    }
+
     try {
       await get().autoHealSandbox({ reason: 'code-block' });
       const result = await hopxService.executeCode(block.code, block.language);
@@ -827,6 +846,91 @@ export const useNotesStore = create<NotesStore>((set, get) => ({
         },
       });
     }
+  },
+
+  // Offline queue methods
+  setIsOnline: (isOnline: boolean) => {
+    set({ isOnline });
+    // Process queue when coming back online
+    if (isOnline) {
+      get().processOfflineQueue();
+    }
+  },
+
+  queueCodeExecution: (noteId, blockId, code, language) => {
+    const queued: import('../types').QueuedCodeExecution = {
+      id: nanoid(),
+      noteId,
+      blockId,
+      code,
+      language,
+      timestamp: Date.now(),
+    };
+
+    set((state) => ({
+      offlineQueue: [...state.offlineQueue, queued],
+    }));
+
+    // Persist queue to localStorage for persistence across sessions
+    const queue = get().offlineQueue;
+    localStorage.setItem('sandbooks-offline-queue', JSON.stringify(queue));
+  },
+
+  processOfflineQueue: async () => {
+    const state = get();
+    const queue = [...state.offlineQueue];
+
+    if (queue.length === 0) {
+      return;
+    }
+
+    // Clear queue immediately to prevent duplicates
+    set({ offlineQueue: [] });
+    localStorage.removeItem('sandbooks-offline-queue');
+
+    toast.custom(`🔄 Processing ${queue.length} queued execution${queue.length > 1 ? 's' : ''}...`, {
+      duration: 3000,
+    });
+
+    // Process each queued execution
+    for (const item of queue) {
+      try {
+        const note = get().notes.find((n) => n.id === item.noteId);
+        if (!note) {
+          console.warn(`Note ${item.noteId} not found for queued execution`);
+          continue;
+        }
+
+        await get().autoHealSandbox({ reason: 'offline-queue' });
+        const result = await hopxService.executeCode(item.code, item.language);
+
+        get().updateCodeBlock(item.noteId, item.blockId, {
+          output: {
+            stdout: result.stdout,
+            stderr: result.stderr,
+            error: result.error,
+            executionTime: result.executionTime,
+            exitCode: result.exitCode,
+          },
+        });
+      } catch (error) {
+        console.error('Failed to process queued execution:', error);
+        get().updateCodeBlock(item.noteId, item.blockId, {
+          output: {
+            error: error instanceof Error ? error.message : 'Failed to execute queued code',
+          },
+        });
+      }
+    }
+
+    toast.success('All queued executions completed', {
+      duration: 3000,
+    });
+  },
+
+  clearOfflineQueue: () => {
+    set({ offlineQueue: [] });
+    localStorage.removeItem('sandbooks-offline-queue');
   },
 
   // Storage Provider Lifecycle Methods
@@ -917,6 +1021,22 @@ if (darkModeState) {
   document.documentElement.classList.add('dark');
 } else {
   document.documentElement.classList.remove('dark');
+}
+
+// Restore offline queue from localStorage on initialization
+if (typeof window !== 'undefined') {
+  try {
+    const savedQueue = localStorage.getItem('sandbooks-offline-queue');
+    if (savedQueue) {
+      const queue = JSON.parse(savedQueue) as import('../types').QueuedCodeExecution[];
+      if (Array.isArray(queue) && queue.length > 0) {
+        useNotesStore.setState({ offlineQueue: queue });
+      }
+    }
+  } catch (error) {
+    console.error('Failed to restore offline queue:', error);
+    localStorage.removeItem('sandbooks-offline-queue');
+  }
 }
 
 // Helper function to create a new note

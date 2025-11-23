@@ -4,6 +4,7 @@ import { Header } from './components/ui/Header';
 import { Sidebar } from './components/Sidebar/Sidebar';
 import { Editor } from './components/Editor/Editor';
 import { EditorModeIndicator } from './components/ui/EditorModeIndicator';
+import { AnalyticsConsent } from './components/ui/AnalyticsConsent';
 import type { JSONContent } from '@tiptap/react';
 
 // Lazy load on-demand components for better performance
@@ -143,6 +144,8 @@ function App() {
       </Suspense>
       {/* Glass morphism editor mode indicator (bottom-right, contextual) */}
       <EditorModeIndicator />
+      {/* Analytics consent banner (minimal, non-intrusive) */}
+      <AnalyticsConsent />
       {/* Two-pane layout: Sidebar + Editor (industry-standard flex pattern) */}
       <div className="flex-1 flex overflow-hidden bg-white dark:bg-stone-900">
         {/* Desktop sidebar - independently scrollable */}

@@ -3,8 +3,42 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="manifest" href="/manifest.webmanifest" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#1C1917" />
+    <meta name="description" content="Executable Notes for Developers" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Sandbooks" />
+    <link rel="apple-touch-icon" href="/pwa-192x192.png" />
     <title>Sandbooks - Executable Notes for Developers</title>
+    <!-- Google tag (gtag.js) - Loads only if consent is accepted -->
+    <script>
+      (function() {
+        // Check consent before loading GTM
+        const consent = localStorage.getItem('sandbooks-analytics-consent');
+        if (consent === 'disabled') {
+          // Analytics disabled - don't load GTM
+          window.dataLayer = [];
+          window.gtag = function() {};
+          return;
+        }
+        
+        const gtmId = '%VITE_GOOGLE_TAG_MANAGER_TAG%';
+        if (gtmId && gtmId.trim() !== '' && gtmId.startsWith('G-')) {
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', gtmId);
+          
+          var script = document.createElement('script');
+          script.async = true;
+          script.src = 'https://www.googletagmanager.com/gtag/js?id=' + gtmId;
+          document.head.appendChild(script);
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

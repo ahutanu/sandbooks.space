@@ -226,18 +226,21 @@ export const Editor = ({ note, onUpdate }: EditorProps) => {
   // Update focus mode extension when toggle changes
   useEffect(() => {
     if (editor) {
-      // Update the extension options
-      editor.extensionManager.extensions.forEach((extension) => {
-        if (extension.name === 'focusMode') {
-          extension.options.enabled = focusModeEnabled;
-        }
-      });
+      // Update the extension options dynamically
+      const focusModeExtension = editor.extensionManager.extensions.find(
+        (ext) => ext.name === 'focusMode'
+      );
+      if (focusModeExtension) {
+        focusModeExtension.options.enabled = focusModeEnabled;
+      }
       
       // Dispatch a transaction to trigger plugin state update
       // This ensures the decorations are properly recalculated
       const { tr } = editor.state;
-      // Force a selection update to trigger decoration recalculation
+      // Force a focus mode update to trigger decoration recalculation
       tr.setMeta('focusModeUpdate', true);
+      // Also trigger a selection change to ensure decorations update
+      tr.setSelection(editor.state.selection);
       editor.view.dispatch(tr);
     }
   }, [editor, focusModeEnabled]);

@@ -6,7 +6,7 @@ import tseslint from 'typescript-eslint';
 import { defineConfig, globalIgnores } from 'eslint/config';
 
 export default defineConfig([
-  globalIgnores(['dist', 'backend/dist', 'playwright-report', 'test-results', 'coverage', 'backend/coverage']),
+  globalIgnores(['dist', 'dev-dist', 'backend/dist', 'playwright-report', 'test-results', 'coverage', 'backend/coverage']),
 
   // Frontend (React + Vite)
   {
@@ -75,6 +75,22 @@ export default defineConfig([
       globals: {
         ...globals.node,
         ...globals.browser
+      }
+    }
+  },
+
+  // Config files (vite.config.ts, etc.)
+  {
+    files: ['*.config.{ts,js}', '*.config.*.{ts,js}'],
+    extends: [
+      js.configs.recommended,
+      tseslint.configs.recommended
+    ],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'module',
+      globals: {
+        ...globals.node
       }
     }
   }

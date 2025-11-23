@@ -27,7 +27,9 @@ export const FocusMode = Extension.create<FocusModeOptions>({
   },
 
   addProseMirrorPlugins() {
-    const isEnabled = () => this.options.enabled;
+    // Use a function that reads from options dynamically, not a closure
+    const getExtension = () => this;
+    const isEnabled = () => getExtension().options.enabled;
 
     return [
       new Plugin({
@@ -38,6 +40,7 @@ export const FocusMode = Extension.create<FocusModeOptions>({
           },
           apply(tr, _decorationSet, oldState, newState) {
             // Only update decorations if focus mode is enabled
+            // Read from options dynamically to get current value
             if (!isEnabled()) {
               return DecorationSet.empty;
             }

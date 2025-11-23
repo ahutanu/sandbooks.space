@@ -24,9 +24,15 @@ export const Toast = ({ t, type = 'custom', message }: ToastProps) => {
                         {type === 'loading' && <VscLoading className="h-5 w-5 text-blue-500 animate-spin" />}
                     </div>
                     <div className="ml-3 flex-1">
-                        <p className="text-sm font-medium text-stone-900 dark:text-stone-100 font-mono break-words">
-                            {message}
-                        </p>
+                        {typeof message === 'string' ? (
+                            <p className="text-sm font-medium text-stone-900 dark:text-stone-100 font-mono break-words">
+                                {message}
+                            </p>
+                        ) : (
+                            <div className="text-sm font-medium text-stone-900 dark:text-stone-100 font-mono break-words">
+                                {message}
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>

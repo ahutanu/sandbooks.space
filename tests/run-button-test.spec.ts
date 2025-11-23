@@ -4,11 +4,35 @@ import { seedCleanState } from './helpers';
 test.beforeEach(async ({ page }) => {
   await seedCleanState(page);
   await page.goto('/');
+  await page.waitForSelector('header h1', { timeout: 10000 });
+  // Dismiss any toasts that might block interactions
+  await page.evaluate(() => {
+    const toaster = document.querySelector('[data-rht-toaster]');
+    if (toaster) {
+      const dismissButtons = toaster.querySelectorAll('button[aria-label="Dismiss"]');
+      dismissButtons.forEach(btn => (btn as HTMLElement).click());
+    }
+  });
+  await page.waitForTimeout(500);
 });
 
 test('Run Button Pulse Glow and Code Results', async ({ page }) => {
+  // Wait and dismiss toasts
+  await page.waitForTimeout(1000);
+  await page.evaluate(() => {
+    const toaster = document.querySelector('[data-rht-toaster]');
+    if (toaster) {
+      const dismissButtons = toaster.querySelectorAll('button[aria-label="Dismiss"]');
+      dismissButtons.forEach(btn => (btn as HTMLElement).click());
+    }
+  });
+  await page.waitForTimeout(300);
+  
   // Click the Code button in toolbar
-  await page.getByLabel(/Insert code block/i).click();
+  const codeBlockButton = page.getByLabel(/Insert code block/i).or(page.getByTitle(/Insert Code Block/i));
+  await codeBlockButton.waitFor({ state: 'visible', timeout: 5000 });
+  await codeBlockButton.scrollIntoViewIfNeeded();
+  await codeBlockButton.click({ force: true });
   await page.waitForTimeout(500);
 
   // Type Python code in the code block

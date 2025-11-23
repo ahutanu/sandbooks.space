@@ -58,6 +58,15 @@ export interface CodeBlockAttrs {
 
 export type Language = 'python' | 'javascript' | 'typescript' | 'bash' | 'go';
 
+export interface QueuedCodeExecution {
+  id: string;
+  noteId: string;
+  blockId: string;
+  code: string;
+  language: Language;
+  timestamp: number;
+}
+
 export interface NotesStore {
   notes: Note[];
   activeNoteId: string | null;
@@ -88,6 +97,9 @@ export interface NotesStore {
   lastSyncedAt: string | null;
   storageType: 'localStorage' | 'fileSystem'; // NEW: Track active provider type
   storageName: string; // NEW: Track active provider name
+  // Offline queue state
+  isOnline: boolean;
+  offlineQueue: QueuedCodeExecution[];
   addNote: (note: Note) => void;
   updateNote: (id: string, updates: Partial<Note>) => void;
   deleteNote: (id: string) => void;
@@ -127,6 +139,11 @@ export interface NotesStore {
   updateCodeBlock: (noteId: string, blockId: string, updates: Partial<CodeBlock>) => void;
   deleteCodeBlock: (noteId: string, blockId: string) => void;
   executeCodeBlock: (noteId: string, blockId: string) => Promise<void>;
+  // Offline queue methods
+  setIsOnline: (isOnline: boolean) => void;
+  queueCodeExecution: (noteId: string, blockId: string, code: string, language: Language) => void;
+  processOfflineQueue: () => Promise<void>;
+  clearOfflineQueue: () => void;
   // Storage Provider - replaces fileSystemHandle
   getStorageInfo: () => import('../services/StorageProvider').StorageProviderMetadata;
   connectToLocalFolder: () => Promise<void>;
