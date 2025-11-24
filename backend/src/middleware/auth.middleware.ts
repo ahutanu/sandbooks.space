@@ -13,6 +13,12 @@ export const authGuard = (req: Request, res: Response, next: NextFunction) => {
     return next();
   }
 
+  // WebSocket upgrade requests are handled separately at the HTTP server level
+  // They should not reach Express middleware, but if they do, allow them through
+  if (req.headers.upgrade === 'websocket') {
+    return next();
+  }
+
   // Public health endpoints should never require auth
   const path = req.path.toLowerCase();
   if (path.startsWith('/api/health') || path.includes('/sandbox/health') || path === '/') {

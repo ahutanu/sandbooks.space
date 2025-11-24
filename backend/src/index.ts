@@ -3,6 +3,8 @@ import env from './config/env';
 import logger from './utils/logger';
 import hopxService from './services/hopx.service';
 import terminalSessionManager from './services/terminalSessionManager';
+import localTerminalService from './services/localTerminal.service';
+import { createLocalTerminalWebSocketServer } from './routes/localTerminal.routes';
 import { getErrorMessage } from './utils/errorUtils';
 
 const app = createApp();
@@ -13,6 +15,10 @@ const server = app.listen(env.PORT, () => {
   logger.info(`🔧 Environment: ${env.NODE_ENV}`);
 });
 
+// Create WebSocket server for local terminal BEFORE Express middleware can interfere
+// This must be done after server.listen() but WebSocket upgrades bypass Express
+createLocalTerminalWebSocketServer(server);
+
 // Graceful shutdown
 const gracefulShutdown = async (signal: string) => {
   logger.info(`${signal} received, shutting down gracefully`);
@@ -22,6 +28,13 @@ const gracefulShutdown = async (signal: string) => {
     await terminalSessionManager.shutdown();
   } catch (error: unknown) {
     logger.error('Error shutting down terminal manager', { error: getErrorMessage(error) });
+  }
+
+  // Cleanup local terminal service
+  try {
+    await localTerminalService.shutdown();
+  } catch (error: unknown) {
+    logger.error('Error shutting down local terminal service', { error: getErrorMessage(error) });
   }
 
   // Cleanup Hopx sandbox

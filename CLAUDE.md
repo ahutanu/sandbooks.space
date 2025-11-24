@@ -87,10 +87,34 @@ Single global store (`src/store/notesStore.ts`):
 
 - Quake-style overlay (toggle: `Cmd+\``)
 - GLOBAL session (single session per app)
-- Initialized on mount (`initializeGlobalTerminalSession()`)
-- Backend: Isolated sandbox per session
+- Dual execution modes:
+  - **Cloud Mode (REPL)**: Hopx sandbox, SSE streaming, command-line buffering
+  - **Local Mode (PTY)**: Native shell via node-pty, WebSocket streaming, raw terminal
+- Terminal Emulator: xterm.js with GPU acceleration (WebGL)
+- Advanced Features:
+  - Unicode 11 support (emoji, CJK, RTL)
+  - Inline images (sixel, iTerm2 protocol)
+  - OSC sequence handlers (shell integration ready)
+  - Session health checks and reconnection
+  - Terminal size validation (10x2 to 1000x1000)
+
+**Local Terminal** (`localTerminal.service.ts`):
+- PTY process spawning via node-pty
+- Shell detection (zsh, bash, fish, PowerShell, cmd)
+- Login shell mode (-l -i) for proper profile loading
+- Environment variable whitelisting (security)
+- Session management with 30min timeout
+- WebSocket streaming for low latency
+- Health check endpoint for session validation
+- Graceful shutdown (SIGTERM → SIGKILL)
+
+**Cloud Terminal** (`terminalSessionManager.ts`):
+- Isolated Hopx sandbox per session
 - SSE for real-time streaming
-- Persists: working directory + env vars
+- Heartbeat: 30s
+- Tracks: working dir + env vars
+- Uses `sandbox.commands.run()` with `workingDir`
+- Uses `sandbox.env.update()` for persistence
 
 ### Backend Services
 
@@ -113,15 +137,23 @@ Single global store (`src/store/notesStore.ts`):
 
 ### API Routes
 
+**Code Execution:**
 - `POST /api/execute` - Execute code
 - `GET /api/sandbox/health` - Health check
 - `POST /api/sandbox/recreate` - Force recreate
 - `POST /api/sandbox/destroy` - Destroy sandbox
+
+**Cloud Terminal:**
 - `POST /api/terminal/sessions` - Create session
 - `GET /api/terminal/sessions/:id` - Get session
 - `DELETE /api/terminal/sessions/:id` - Delete session
 - `POST /api/terminal/sessions/:id/execute` - Execute command
 - `GET /api/terminal/sessions/:id/stream` - SSE stream
+
+**Local Terminal:**
+- `WS /api/terminal/local/ws/:sessionId?` - WebSocket connection (creates or reconnects)
+- `GET /api/terminal/local/health` - Check if local terminal is available
+- `GET /api/terminal/local/sessions/:sessionId/health` - Check specific session health
 
 ## Environment Variables
 

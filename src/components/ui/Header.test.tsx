@@ -10,6 +10,9 @@ vi.mock('../../store/notesStore', () => {
         importNotes: vi.fn(),
         exportNotes: vi.fn(() => JSON.stringify([{ id: 'test-note' }])),
         activeNoteId: 'test-note',
+        executionMode: 'cloud',
+        setExecutionMode: vi.fn(),
+        localExecutionAvailable: true,
         cloudExecutionEnabled: false,
         toggleCloudExecution: vi.fn(),
         darkModeEnabled: false,
@@ -71,11 +74,11 @@ describe('Header Component', () => {
     it('handles cloud execution toggle', async () => {
         render(<Header onToggleMobileSidebar={mockToggleMobileSidebar} />);
 
-        const cloudButton = screen.getByTitle('Cloud execution disabled');
+        const cloudButton = screen.getByTitle(/Cloud execution/);
         fireEvent.click(cloudButton);
 
         const { useNotesStore } = await import('../../store/notesStore');
-        expect(useNotesStore().toggleCloudExecution).toHaveBeenCalled();
+        expect(useNotesStore().setExecutionMode).toHaveBeenCalled();
     });
 
     it('handles new note creation', async () => {

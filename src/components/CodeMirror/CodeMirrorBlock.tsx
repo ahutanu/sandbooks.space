@@ -37,8 +37,11 @@ export const CodeMirrorBlock = ({ noteId, block }: CodeMirrorBlockProps) => {
     updateCodeBlock,
     deleteCodeBlock,
     executeCodeBlock,
-    cloudExecutionEnabled
+    executionMode
   } = useNotesStore();
+  
+  // Code execution only available in cloud mode
+  const canExecute = executionMode === 'cloud';
 
   const [isExecuting, setIsExecuting] = useState(false);
 
@@ -70,10 +73,10 @@ export const CodeMirrorBlock = ({ noteId, block }: CodeMirrorBlockProps) => {
     updateCodeBlock(noteId, block.id, { language: e.target.value as Language });
   };
 
-  // Execute code via Hopx
+  // Execute code via execution provider
   const handleExecute = async () => {
-    if (!cloudExecutionEnabled) {
-      toast.error('Enable cloud execution to run code');
+    if (!canExecute) {
+      toast.error('Code execution is only available in cloud mode. Use the terminal for local execution.');
       return;
     }
 
@@ -140,7 +143,7 @@ export const CodeMirrorBlock = ({ noteId, block }: CodeMirrorBlockProps) => {
 
           {/* Window Controls */}
           <div className="flex items-center gap-1 h-full pr-2">
-            {block.output && cloudExecutionEnabled && (
+            {block.output && canExecute && (
               <button
                 onClick={handleClearOutput}
                 className="p-1.5 hover:bg-[#2a2d2e] rounded text-[#858585] hover:text-[#cccccc] transition-colors"
@@ -164,7 +167,7 @@ export const CodeMirrorBlock = ({ noteId, block }: CodeMirrorBlockProps) => {
               </svg>
             </button>
 
-            {cloudExecutionEnabled && (
+            {canExecute && (
               <button
                 onClick={handleExecute}
                 disabled={isExecuting}
@@ -288,7 +291,7 @@ export const CodeMirrorBlock = ({ noteId, block }: CodeMirrorBlockProps) => {
             )}
           </div>
           <div>
-            {isExecuting ? 'Executing...' : cloudExecutionEnabled ? 'Ready' : 'Cloud execution disabled'}
+            {isExecuting ? 'Executing...' : canExecute ? 'Ready' : ''}
           </div>
         </div>
       </div>

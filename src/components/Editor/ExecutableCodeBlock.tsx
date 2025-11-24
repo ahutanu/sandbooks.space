@@ -1,10 +1,10 @@
 import { NodeViewWrapper } from '@tiptap/react';
 import type { NodeViewProps } from '@tiptap/react';
 import { useState } from 'react';
-import { hopxService } from '../../services/hopx';
 import type { Language, ExecutionResult } from '../../types';
 import { useNotesStore } from '../../store/notesStore';
 import { showToast as toast } from '../../utils/toast';
+import { executionModeManager } from '../../services/execution/executionModeManager';
 import clsx from 'clsx';
 import { VscClearAll } from 'react-icons/vsc';
 import { LanguageIcon } from './LanguageIcon';
@@ -14,12 +14,15 @@ import { recordOnboardingEvent } from '../../utils/onboardingMetrics';
 const LANGUAGES: Language[] = ['python', 'javascript', 'typescript', 'bash', 'go'];
 
 export const ExecutableCodeBlockComponent = ({ node, updateAttributes }: NodeViewProps) => {
-  const { cloudExecutionEnabled, sandboxStatus, recreateSandbox, setSandboxStatus, darkModeEnabled } = useNotesStore();
+  const { executionMode, sandboxStatus, recreateSandbox, setSandboxStatus, darkModeEnabled } = useNotesStore();
   const autoHealSandbox = useNotesStore((state) => state.autoHealSandbox);
   const activeNoteId = useNotesStore((state) => state.activeNoteId);
   const [isExecuting, setIsExecuting] = useState(false);
   const language = (node.attrs.language as Language) || 'python';
   const executionResult = node.attrs.executionResult as ExecutionResult | undefined;
+  
+  // Code execution only available in cloud mode
+  const canExecute = executionMode === 'cloud';
 
   // Backward compatibility: Try attrs.code first, fallback to textContent
   const code = (node.attrs.code as string) || node.textContent || '';
@@ -37,12 +40,21 @@ export const ExecutableCodeBlockComponent = ({ node, updateAttributes }: NodeVie
       return;
     }
 
+    // Check if execution is available
+    if (!canExecute) {
+      toast.error('Code execution is only available in cloud mode. Use the terminal for local execution.');
+      return;
+    }
+
     setIsExecuting(true);
     updateAttributes({ isExecuting: true, executionResult: undefined });
 
     try {
       await autoHealSandbox({ reason: 'code-block-execute' });
-      const result = await hopxService.executeCode(code, language);
+      
+      // Use execution mode manager to get the appropriate provider
+      const executionProvider = executionModeManager.getExecutionProvider();
+      const result = await executionProvider.executeCode(code, language);
 
       // Update sandbox status based on execution result
       if (result.sandboxStatus) {
@@ -148,7 +160,7 @@ export const ExecutableCodeBlockComponent = ({ node, updateAttributes }: NodeVie
 
           {/* Action Buttons - Icon Only */}
           <div className="flex items-center gap-1.5">
-            {executionResult && cloudExecutionEnabled && (
+            {executionResult && canExecute && (
               <button
                 onClick={handleClearOutput}
                 className="p-2 bg-stone-600/50 hover:bg-stone-500 text-stone-100 rounded-lg transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-400 active:scale-[0.95]"
@@ -159,7 +171,7 @@ export const ExecutableCodeBlockComponent = ({ node, updateAttributes }: NodeVie
                 <VscClearAll size={18} aria-hidden="true" />
               </button>
             )}
-            {sandboxStatus === 'unhealthy' && cloudExecutionEnabled && (
+            {sandboxStatus === 'unhealthy' && canExecute && (
               <button
                 onClick={handleRestartSandbox}
                 className="p-2 bg-amber-600/80 hover:bg-amber-600 text-white rounded-lg transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 active:scale-[0.95]"
@@ -172,7 +184,7 @@ export const ExecutableCodeBlockComponent = ({ node, updateAttributes }: NodeVie
                 </svg>
               </button>
             )}
-            {cloudExecutionEnabled && (
+            {canExecute && (
               <button
                 onClick={handleExecute}
                 disabled={isExecuting || sandboxStatus === 'creating'}

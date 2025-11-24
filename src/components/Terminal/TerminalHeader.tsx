@@ -11,6 +11,8 @@ import type { TerminalHeaderProps } from '../../types/terminal';
 export function TerminalHeader({
   status,
   latency,
+  shell,
+  workingDir,
   onClose,
   onResize,
 }: TerminalHeaderProps) {
@@ -114,6 +116,20 @@ export function TerminalHeader({
                 />
               </svg>
               <span>{latency}ms</span>
+            </div>
+          )}
+          {status === 'connected' && (
+            <div className="flex items-center gap-2 text-xs text-stone-600 dark:text-stone-300">
+              {shell && (
+                <span className="px-2 py-1 rounded-md bg-stone-100 dark:bg-stone-800 border border-stone-200/60 dark:border-stone-700/60">
+                  {shell}
+                </span>
+              )}
+              {workingDir && (
+                <span className="px-2 py-1 rounded-md bg-stone-100 dark:bg-stone-800 border border-stone-200/60 dark:border-stone-700/60 truncate max-w-[200px]" title={workingDir}>
+                  {workingDir}
+                </span>
+              )}
             </div>
           )}
         </div>

@@ -6,6 +6,7 @@ export type OnboardingEvent =
   | 'search_opened'
   | 'tag_added'
   | 'cloud_execution_toggled'
+  | 'execution_mode_changed'
   | 'notes_exported'
   | 'notes_imported'
   | 'terminal_toggled'

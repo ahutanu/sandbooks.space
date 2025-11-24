@@ -7,7 +7,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useNotesStore } from '../../store/notesStore';
-import { terminalService } from '../../services/terminal';
+import { executionModeManager } from '../../services/execution/executionModeManager';
 import { TerminalHeader } from './TerminalHeader';
 import { TerminalEmulator } from './TerminalEmulator';
 import { TerminalFooter } from './TerminalFooter';
@@ -21,7 +21,7 @@ export function QuakeTerminal() {
     setTerminalHeight,
     globalTerminalSessionId,
     globalTerminalStatus,
-    setGlobalTerminalStatus,
+    // setGlobalTerminalStatus removed - using getState() to prevent re-render cascade
   } = useNotesStore();
 
   const [isAnimating, setIsAnimating] = useState(false);
@@ -120,9 +120,9 @@ export function QuakeTerminal() {
   // Handle status change
   const handleStatusChange = useCallback(
     (status: TerminalSessionState['status']) => {
-      setGlobalTerminalStatus(status);
+      useNotesStore.getState().setGlobalTerminalStatus(status);
     },
-    [setGlobalTerminalStatus]
+    []
   );
 
   // Handle latency update (stored locally, not in global state)
@@ -131,23 +131,29 @@ export function QuakeTerminal() {
     setLatency(lat);
   }, []);
 
+  // Session metadata (shell + cwd for display)
+  const [sessionInfo, setSessionInfo] = useState<{ shell?: string; workingDir?: string; provider?: 'local' | 'cloud' }>({});
+
   // Handle error
   const [errorMessage, setErrorMessage] = useState<string | undefined>(undefined);
   const handleError = useCallback(
     (error: string) => {
       setErrorMessage(error);
-      setGlobalTerminalStatus('error');
+      useNotesStore.getState().setGlobalTerminalStatus('error');
     },
-    [setGlobalTerminalStatus]
+    []
   );
 
   // Handle command from virtual keyboard
   const handleCommand = useCallback(
     (command: string) => {
       if (globalTerminalSessionId && globalTerminalStatus === 'connected') {
-        terminalService.executeCommand(globalTerminalSessionId, command).catch((error) => {
-          handleError(error.message);
-        });
+        const provider = executionModeManager.getTerminalProvider();
+        if (provider) {
+          provider.sendInput(globalTerminalSessionId, command).catch((error) => {
+            handleError(error.message);
+          });
+        }
       }
     },
     [globalTerminalSessionId, globalTerminalStatus, handleError]
@@ -162,25 +168,27 @@ export function QuakeTerminal() {
     [terminalHeight, setTerminalHeight]
   );
 
-  // Don't render if not open
-  if (!isTerminalOpen) return null;
+  // Don't render backdrop if not open
+  // if (!isTerminalOpen) return null; <-- Removed to keep terminal mounted
 
   return (
     <>
       {/* Backdrop overlay with glass blur */}
-      <div
-        className={`fixed inset-0 bg-black/20 backdrop-blur-sm transition-opacity duration-300 ${isAnimating ? 'opacity-0' : 'opacity-100'
-          }`}
-        style={{
-          zIndex: 50, // Backdrop below terminal (z-index: 60)
-        }}
-        onClick={handleClose}
-        aria-hidden="true"
-      />
+      {isTerminalOpen && (
+        <div
+          className={`fixed inset-0 bg-black/20 backdrop-blur-sm transition-opacity duration-300 ${isAnimating ? 'opacity-0' : 'opacity-100'
+            }`}
+          style={{
+            zIndex: 50, // Backdrop below terminal (z-index: 60)
+          }}
+          onClick={handleClose}
+          aria-hidden="true"
+        />
+      )}
 
-      {/* Terminal container */}
+      {/* Terminal container - Always mounted to preserve state/connection */}
       <div
-        className={`fixed left-0 right-0 shadow-elevation-4 transition-transform duration-300 ease-out ${isAnimating ? '-translate-y-full' : 'translate-y-0'
+        className={`fixed left-0 right-0 shadow-elevation-4 transition-transform duration-300 ease-out ${!isTerminalOpen || isAnimating ? '-translate-y-full' : 'translate-y-0'
           }`}
         style={{
           top: 0,
@@ -197,6 +205,8 @@ export function QuakeTerminal() {
           <TerminalHeader
             status={globalTerminalStatus}
             latency={latency}
+            shell={sessionInfo.shell}
+            workingDir={sessionInfo.workingDir}
             onClose={handleClose}
             onResize={handleResize}
           />
@@ -209,6 +219,7 @@ export function QuakeTerminal() {
               onStatusChange={handleStatusChange}
               onLatencyUpdate={handleLatencyUpdate}
               onError={handleError}
+              onSessionInfo={setSessionInfo}
             />
           ) : (
             <div className="flex-1 flex items-center justify-center text-stone-500 dark:text-stone-400" style={{ width: '100%', maxWidth: '100%' }}>

@@ -56,9 +56,13 @@ describe('QuakeTerminal', () => {
     });
 
     describe('Rendering', () => {
-        it('should not render when isTerminalOpen is false', () => {
-            const { container } = render(<QuakeTerminal />);
-            expect(container.firstChild).toBeNull();
+        it('should render hidden when isTerminalOpen is false', () => {
+            render(<QuakeTerminal />);
+            
+            // It renders but is hidden
+            const terminalContainer = document.querySelector('.fixed.left-0.right-0');
+            expect(terminalContainer).toBeInTheDocument();
+            expect(terminalContainer?.className).toContain('-translate-y-full');
         });
 
         it('should render backdrop and terminal container when open', () => {

@@ -3,6 +3,7 @@
  *
  * Detects user's operating system and provides platform-specific
  * keyboard modifier keys for display purposes.
+ * Also provides mobile detection and local execution support checks.
  */
 
 /**
@@ -101,4 +102,30 @@ export const matchesShortcut = (event: KeyboardEvent, pattern: string): boolean 
     event.shiftKey === hasShift;
 
   return keyMatches && modifierMatches;
+};
+
+/**
+ * Detects if the user is on a mobile device
+ * Uses user agent detection only - width-based detection is unreliable
+ * as desktop browsers can be resized to narrow widths
+ */
+export const isMobile = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  // Use user agent detection only - width-based detection is unreliable
+  // as desktop browsers can be resized to narrow widths
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+    navigator.userAgent
+  );
+};
+
+/**
+ * Checks if local execution is supported on the current platform
+ * Returns false on mobile devices, true on desktop
+ * Additional checks can be added for runtime availability, permissions, etc.
+ */
+export const isLocalExecutionSupported = async (): Promise<boolean> => {
+  if (isMobile()) return false;
+  // Additional checks: Node.js runtime, permissions, etc.
+  // For now, assume desktop browsers can support local execution via backend
+  return true;
 };

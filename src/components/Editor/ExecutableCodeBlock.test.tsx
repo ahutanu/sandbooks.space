@@ -17,6 +17,7 @@ vi.mock('../../services/hopx', () => ({
 }));
 
 const mockStore = {
+    executionMode: 'cloud',
     cloudExecutionEnabled: true,
     sandboxStatus: 'healthy',
     recreateSandbox: vi.fn(),
@@ -24,6 +25,11 @@ const mockStore = {
     autoHealSandbox: vi.fn(),
     activeNoteId: 'test-note',
     darkModeEnabled: false,
+    executeCodeBlock: vi.fn(),
+    updateCodeBlock: vi.fn(),
+    deleteCodeBlock: vi.fn(),
+    queueCodeExecution: vi.fn(),
+    isOnline: true,
 };
 
 vi.mock('../../store/notesStore', () => ({
@@ -510,6 +516,7 @@ describe('ExecutableCodeBlockComponent', () => {
     it('handles execution when cloud execution is disabled', () => {
         vi.mocked(useNotesStore).mockReturnValueOnce({
             ...mockStore,
+            executionMode: 'local',
             cloudExecutionEnabled: false,
         } as typeof mockStore);
 

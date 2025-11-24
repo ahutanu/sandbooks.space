@@ -202,9 +202,9 @@ test.describe('PWA Features', () => {
   });
 
   test('code execution queues when offline', async ({ page, context }) => {
-    // Wait for page to fully load
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(1000);
+    // Wait for page to load enough for UI (networkidle can hang due to SSE)
+    await page.waitForLoadState('load');
+    await page.waitForTimeout(500);
     
     // Dismiss any toasts
     await page.evaluate(() => {
@@ -287,9 +287,9 @@ test.describe('PWA Features', () => {
   });
 
   test('install prompt component is present in DOM', async ({ page }) => {
-    // Wait for page to fully load
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(1000);
+    // Wait for page to load (avoid networkidle due to SW long polls)
+    await page.waitForLoadState('load');
+    await page.waitForTimeout(500);
     
     // Check if install prompt component code is loaded
     // Note: Install prompt only shows when beforeinstallprompt fires
@@ -323,7 +323,7 @@ test.describe('PWA Features', () => {
     });
 
     // Wait for page to fully load
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('load');
     
     // Simulate user engagement
     await page.click('header h1');
@@ -370,8 +370,7 @@ test.describe('PWA Features', () => {
       localStorage.removeItem('sandbooks-install-notification-dismissed');
     });
 
-    // Wait for page to load
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('load');
     
     // Wait for notification (after 10 seconds)
     await page.waitForTimeout(11000);
@@ -484,7 +483,7 @@ test.describe('PWA Offline Functionality', () => {
 
   test('notes can be viewed offline', async ({ page, context }) => {
     // Wait for page to load
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('load');
     
     // Load a note first - use button selector
     const welcomeNote = page.locator('button').filter({ hasText: /Welcome.*Sandbooks/i }).first();
@@ -510,7 +509,7 @@ test.describe('PWA Offline Functionality', () => {
 
   test('notes can be edited offline', async ({ page, context }) => {
     // Wait for page to load
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('load');
     
     // Load a note
     const welcomeNote = page.locator('button').filter({ hasText: /Welcome.*Sandbooks/i }).first();
@@ -621,4 +620,3 @@ test.describe('PWA Offline Functionality', () => {
     expect(Array.isArray(queueAfterProcessing)).toBe(true);
   });
 });
-

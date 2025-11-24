@@ -19,8 +19,8 @@ test.describe('Visual Design System Compliance', () => {
 
   test('dark mode is applied correctly', async ({ page }) => {
     // Wait for React to hydrate and apply theme mode
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(2000);
+    await page.waitForLoadState('load');
+    await page.waitForTimeout(500);
     
     // seedCleanState sets dark-mode to 'false', so we should verify light mode is applied
     // OR verify that the mode setting is correctly respected
@@ -175,8 +175,8 @@ test.describe('Visual Design System Compliance', () => {
 
   test('accessibility: keyboard navigation works', async ({ page }) => {
     // Wait for page to be ready
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(500);
+    await page.waitForLoadState('load');
+    await page.waitForTimeout(200);
     
     // Find a focusable element and focus it first
     const firstButton = page.locator('button').first();
@@ -229,7 +229,7 @@ test.describe('Visual Design System Compliance', () => {
 
   test('accessibility: focus indicators are visible', async ({ page }) => {
     // Wait for page to load
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('load');
     
     // Find any button to test focus
     const button = page.locator('button').first();
@@ -250,4 +250,3 @@ test.describe('Visual Design System Compliance', () => {
     }
   });
 });
-

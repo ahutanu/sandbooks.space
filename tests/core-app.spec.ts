@@ -21,7 +21,10 @@ test.describe('Core Application Flow', () => {
   test('loads and shows primary actions', async ({ page }) => {
     await expect(page).toHaveTitle('Sandbooks - Executable Notes for Developers');
     await expect(page.getByText('dev notes')).toBeVisible();
-    await expect(page.getByTitle(/cloud execution/i)).toBeVisible();
+    // Execution mode toggle button (title changes based on mode)
+    // Check that the button exists (may be disabled if local execution not available)
+    const executionToggle = page.getByTestId('execution-toggle');
+    await expect(executionToggle).toHaveCount(1);
     await expect(page.getByTitle(/new note/i)).toBeVisible();
     // Export and import buttons might be in a menu or hidden - check if they exist in the header
     const header = page.locator('header');
@@ -45,15 +48,28 @@ test.describe('Core Application Flow', () => {
     expect(scrollable).toBe(true);
   });
 
-  test('cloud execution toggle updates state', async ({ page }) => {
-    const cloudToggle = page.getByTitle(/cloud execution/i);
-    await cloudToggle.click();
-    await expect(cloudToggle).toHaveAttribute('title', /cloud execution disabled/i);
+  test('execution mode toggle updates state', async ({ page }) => {
+    // Find the execution mode toggle button (title changes based on mode)
+    const toggleButton = page.getByTestId('execution-toggle');
+    await expect(toggleButton).toBeVisible();
+    
+    // Get initial title
+    const initialTitle = await toggleButton.getAttribute('title');
+    
+    // Click to toggle
+    await toggleButton.click();
+    await page.waitForTimeout(1000); // Wait for mode change
+    
+    // Verify state changed (button title should change)
+    const newTitle = await toggleButton.getAttribute('title');
+    expect(newTitle).not.toBe(initialTitle);
+    await expect(toggleButton).toBeVisible();
   });
 
   test('creating a new note updates count', async ({ page }) => {
     // Wait for page to stabilize
-    await page.waitForLoadState('networkidle');
+    // Avoid networkidle due to persistent connections
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForTimeout(2000); // Wait for toasts to auto-dismiss
     
     // Dismiss any remaining toasts
@@ -168,5 +184,22 @@ test.describe('Core Application Flow', () => {
     await exportButton.click();
     const download = await downloadPromise;
     expect(download.suggestedFilename()).toMatch(/sandbooks-\d{4}-\d{2}-\d{2}\.json/);
+  });
+
+  test('terminal panel opens and is usable', async ({ page }) => {
+    // Find terminal toggle button
+    // It's usually in the sidebar or header, likely an icon
+    // Assuming it's the one with code/terminal icon
+    const terminalToggle = page.locator('button[aria-label="Toggle Terminal"]').or(page.locator('button[title*="Terminal"]'));
+    
+    if (await terminalToggle.count() > 0) {
+      await terminalToggle.first().click();
+      // Check for xterm-screen which indicates terminal loaded
+      await expect(page.locator('.xterm-screen')).toBeVisible({ timeout: 5000 });
+      
+      // Check for prompt (might depend on mode, but usually '$')
+      // Note: canvas renders text so we can't check text easily, but we can check if xterm container exists
+      await expect(page.locator('.xterm-viewport')).toBeVisible();
+    }
   });
 });

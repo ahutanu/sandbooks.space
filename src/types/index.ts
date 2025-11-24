@@ -58,6 +58,11 @@ export interface CodeBlockAttrs {
 
 export type Language = 'python' | 'javascript' | 'typescript' | 'bash' | 'go';
 
+// Execution mode types
+export type ExecutionMode = 'cloud' | 'local';
+export type ExecutionProvider = 'cloud' | 'local';
+export type TerminalProvider = 'cloud' | 'local';
+
 export interface QueuedCodeExecution {
   id: string;
   noteId: string;
@@ -70,7 +75,12 @@ export interface QueuedCodeExecution {
 export interface NotesStore {
   notes: Note[];
   activeNoteId: string | null;
-  cloudExecutionEnabled: boolean;
+  // Execution mode (replaces cloudExecutionEnabled)
+  executionMode: ExecutionMode;
+  localExecutionAvailable: boolean;
+  localTerminalAvailable: boolean;
+  // Legacy: kept for backward compatibility during migration
+  cloudExecutionEnabled?: boolean;
   darkModeEnabled: boolean;
   isSearchOpen: boolean;
   searchQuery: string;
@@ -104,7 +114,11 @@ export interface NotesStore {
   updateNote: (id: string, updates: Partial<Note>) => void;
   deleteNote: (id: string) => void;
   setActiveNote: (id: string | null) => void;
-  toggleCloudExecution: () => Promise<void>;
+  // Execution mode management
+  setExecutionMode: (mode: ExecutionMode) => Promise<void>;
+  checkLocalExecutionAvailability: () => Promise<void>;
+  // Legacy: kept for backward compatibility
+  toggleCloudExecution?: () => Promise<void>;
   toggleDarkMode: () => void;
   exportNotes: () => string;
   importNotes: (json: string) => boolean;

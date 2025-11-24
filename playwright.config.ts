@@ -16,6 +16,13 @@ export default defineConfig({
     screenshot: 'only-on-failure',
   },
 
+  webServer: {
+    command: 'ENABLE_LOCAL_TERMINAL=true npm start',
+    port: 5173,
+    timeout: 120000,
+    reuseExistingServer: !process.env.CI,
+  },
+
   projects: [
     {
       name: 'chromium',

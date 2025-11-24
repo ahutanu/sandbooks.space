@@ -139,7 +139,8 @@ export const CodeMirrorEditor = ({
       viewRef.current = null;
       isInitializedRef.current = false;
     };
-  }, [language, onChange, readonly, theme, value]); // Guarded by isInitializedRef to avoid re-instantiation
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run once on mount - dynamic updates handled by separate useEffects below
 
   // Update content when value prop changes externally
   useEffect(() => {

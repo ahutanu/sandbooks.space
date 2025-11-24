@@ -1,175 +1,225 @@
 /**
  * TerminalEmulator Component
  *
- * xterm.js integration with SSE streaming, command history, and ANSI color support.
+ * High-performance xterm.js integration with WebGL support.
+ * Supports two modes:
+ * 1. 'pty' (Local): Raw keystroke streaming, server-side echo/history.
+ * 2. 'repl' (Cloud): Local line buffering/editing, discrete command execution.
  */
 
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useMemo } from 'react';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
+import { SearchAddon } from '@xterm/addon-search';
+import { SerializeAddon } from '@xterm/addon-serialize';
+import { Unicode11Addon } from '@xterm/addon-unicode11';
+import { ImageAddon } from '@xterm/addon-image';
+import { CanvasAddon } from '@xterm/addon-canvas';
 import '@xterm/xterm/css/xterm.css';
-import { terminalService } from '../../services/terminal';
+import { executionModeManager } from '../../services/execution/executionModeManager';
+import { useNotesStore } from '../../store/notesStore';
 import type { TerminalEmulatorProps, TerminalTheme } from '../../types/terminal';
 
-// Simple console logger (replace with proper logger if needed)
+// Simple console logger
 const logger = {
-  debug: (..._args: unknown[]) => {
-    // Quiet debug logs to keep console clean
-  },
+  debug: (...args: unknown[]) => console.log('[TerminalEmulator]', ...args),
   error: (...args: unknown[]) => console.error('[TerminalEmulator]', ...args),
+};
+
+// Theme constants - defined once outside component to prevent recreation
+const LIGHT_THEME: TerminalTheme = {
+  background: '#f5f5f4', // stone-100
+  foreground: '#0c0a09', // stone-950
+  cursor: '#3b82f6',
+  cursorAccent: '#f5f5f4',
+  selectionBackground: '#3b82f680',
+  black: '#44403c',
+  red: '#dc2626',
+  green: '#16a34a',
+  yellow: '#ca8a04',
+  blue: '#2563eb',
+  magenta: '#9333ea',
+  cyan: '#0891b2',
+  white: '#d6d3d1',
+  brightBlack: '#78716c',
+  brightRed: '#f87171',
+  brightGreen: '#4ade80',
+  brightYellow: '#facc15',
+  brightBlue: '#60a5fa',
+  brightMagenta: '#c084fc',
+  brightCyan: '#22d3ee',
+  brightWhite: '#f5f5f4',
+};
+
+const DARK_THEME: TerminalTheme = {
+  background: '#1c1917', // stone-900
+  foreground: '#f5f5f4', // stone-100
+  cursor: '#3b82f6',
+  cursorAccent: '#1c1917',
+  selectionBackground: '#3b82f680',
+  black: '#292524',
+  red: '#dc2626',
+  green: '#16a34a',
+  yellow: '#ca8a04',
+  blue: '#2563eb',
+  magenta: '#9333ea',
+  cyan: '#0891b2',
+  white: '#d6d3d1',
+  brightBlack: '#78716c',
+  brightRed: '#f87171',
+  brightGreen: '#4ade80',
+  brightYellow: '#facc15',
+  brightBlue: '#60a5fa',
+  brightMagenta: '#c084fc',
+  brightCyan: '#22d3ee',
+  brightWhite: '#fafaf9',
 };
 
 export function TerminalEmulator({
   sessionId,
-  noteId: _noteId, // Unused but required by interface
+  noteId: _noteId,
   onStatusChange,
   onLatencyUpdate,
   onError,
+  onSessionInfo,
 }: TerminalEmulatorProps) {
+  const executionMode = useNotesStore((state) => state.executionMode);
+  const isTerminalOpen = useNotesStore((state) => state.isTerminalOpen);
   const terminalRef = useRef<HTMLDivElement>(null);
+
+  // Instance refs
   const xtermRef = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
-  const eventSourceRef = useRef<EventSource | null>(null);
+  const searchAddonRef = useRef<SearchAddon | null>(null);
+  const serializeAddonRef = useRef<SerializeAddon | null>(null);
+  const canvasAddonRef = useRef<CanvasAddon | null>(null);
+  const isOpenedRef = useRef(false);
+
+  // Connection refs
+  const streamRef = useRef<EventSource | WebSocket | null>(null);
+  const wsHandlersRef = useRef<{
+    message: ((event: Event) => void) | null;
+    error: ((event: Event) => void) | null;
+    close: ((event: Event) => void) | null;
+  }>({ message: null, error: null, close: null });
+  const lastPingRef = useRef<number | null>(null);
+
+  // REPL State (Cloud mode only)
   const commandHistoryRef = useRef<string[]>([]);
   const historyIndexRef = useRef<number>(-1);
   const currentLineRef = useRef<string>('');
-  const initializedRef = useRef(false);
   const promptShownRef = useRef(false);
+
+  // Stable theme selection using useMemo to prevent recreation
+  const isDarkMode = typeof window !== 'undefined' && document.documentElement.classList.contains('dark');
+  const theme = useMemo(() => isDarkMode ? DARK_THEME : LIGHT_THEME, [isDarkMode]);
+
+  // Stable callback refs to prevent connection re-establishment
+  const onStatusChangeRef = useRef(onStatusChange);
+  const onLatencyUpdateRef = useRef(onLatencyUpdate);
+  const onErrorRef = useRef(onError);
+  const onSessionInfoRef = useRef(onSessionInfo);
+
+  // Update refs when callbacks change (doesn't trigger effects)
+  useEffect(() => {
+    onStatusChangeRef.current = onStatusChange;
+    onLatencyUpdateRef.current = onLatencyUpdate;
+    onErrorRef.current = onError;
+    onSessionInfoRef.current = onSessionInfo;
+  }, [onStatusChange, onLatencyUpdate, onError, onSessionInfo]);
+
   const ensurePrompt = useCallback(() => {
     const terminal = xtermRef.current;
-    if (!terminal) return;
+    const provider = executionModeManager.getTerminalProvider();
+    // Only force prompt for REPL mode (Cloud) or if specifically needed
+    if (!terminal || !provider || provider.mode === 'pty') return;
+
     terminal.write('$ ');
     promptShownRef.current = true;
   }, []);
 
-  // Reset prompt when session changes
+  // Reset prompt state when session changes
   useEffect(() => {
     promptShownRef.current = false;
   }, [sessionId]);
 
-  // Light mode theme (clean, minimal aesthetic) - IMPORTANT: background must be opaque for mobile visibility
-  const lightTheme: TerminalTheme = {
-    background: '#f5f5f4', // stone-100 - light but not pure white for better contrast
-    foreground: '#0c0a09', // stone-950 - very dark for maximum contrast
-    cursor: '#3b82f6', // blue-500
-    cursorAccent: '#f5f5f4',
-    selectionBackground: '#3b82f680', // blue-500 50% opacity
-    black: '#44403c', // stone-700
-    red: '#dc2626', // red-600
-    green: '#16a34a', // green-600
-    yellow: '#ca8a04', // yellow-600
-    blue: '#2563eb', // blue-600
-    magenta: '#9333ea', // purple-600
-    cyan: '#0891b2', // cyan-600
-    white: '#d6d3d1', // stone-300
-    brightBlack: '#78716c', // stone-500
-    brightRed: '#f87171', // red-400
-    brightGreen: '#4ade80', // green-400
-    brightYellow: '#facc15', // yellow-400
-    brightBlue: '#60a5fa', // blue-400
-    brightMagenta: '#c084fc', // purple-400
-    brightCyan: '#22d3ee', // cyan-400
-    brightWhite: '#f5f5f4', // stone-100
-  };
-
-  // Dark mode theme
-  const darkTheme: TerminalTheme = {
-    background: '#1c1917', // stone-900
-    foreground: '#f5f5f4', // stone-100
-    cursor: '#3b82f6', // blue-500
-    cursorAccent: '#1c1917',
-    selectionBackground: '#3b82f680', // blue-500 50% opacity
-    black: '#292524', // stone-800
-    red: '#dc2626', // red-600
-    green: '#16a34a', // green-600
-    yellow: '#ca8a04', // yellow-600
-    blue: '#2563eb', // blue-600
-    magenta: '#9333ea', // purple-600
-    cyan: '#0891b2', // cyan-600
-    white: '#d6d3d1', // stone-300
-    brightBlack: '#78716c', // stone-500
-    brightRed: '#f87171', // red-400
-    brightGreen: '#4ade80', // green-400
-    brightYellow: '#facc15', // yellow-400
-    brightBlue: '#60a5fa', // blue-400
-    brightMagenta: '#c084fc', // purple-400
-    brightCyan: '#22d3ee', // cyan-400
-    brightWhite: '#fafaf9', // stone-50
-  };
-
-  // Detect dark mode from document class (follows app's dark mode setting)
-  const isDarkMode =
-    typeof window !== 'undefined' &&
-    document.documentElement.classList.contains('dark');
-
-  const theme = isDarkMode ? darkTheme : lightTheme;
-
   const handleTerminalInput = useCallback((data: string) => {
     const terminal = xtermRef.current;
-    if (!terminal) return;
+    const provider = executionModeManager.getTerminalProvider();
+    if (!terminal || !provider) return;
 
+    // --- MODE 1: PTY (Local) ---
+    // Direct raw input streaming. No local intelligence.
+    if (provider.mode === 'pty') {
+      provider.sendInput(sessionId, data).catch(err => onErrorRef.current(err.message));
+      return;
+    }
+
+    // --- MODE 2: REPL (Cloud) ---
+    // Local buffering, editing, history, and echo.
+    
     // Handle special keys
-    if (data === '\r') {
-      terminal.write('\r\n');
+    if (data === '\r') { // Enter
       const command = currentLineRef.current;
+      terminal.write('\r\n'); // Echo newline locally
+      
       if (command.trim()) {
         commandHistoryRef.current.push(command);
         historyIndexRef.current = commandHistoryRef.current.length;
-        terminalService
-          .executeCommand(sessionId, command + '\n')
-          .catch((error) => onError(error.message));
+
+        // Send full command to provider
+        provider.sendInput(sessionId, command + '\n').catch((error) => onErrorRef.current(error.message));
+      } else {
+        // Empty line
+        terminal.write('\r\n'); // Just another newline
       }
       currentLineRef.current = '';
-    } else if (data === '\x7F' || data === '\b') {
-      // Backspace
+      
+    } else if (data === '\x7F' || data === '\b') { // Backspace
       if (currentLineRef.current.length > 0) {
         currentLineRef.current = currentLineRef.current.slice(0, -1);
-        terminal.write('\b \b');
+        terminal.write('\b \b'); // Destructive backspace
       }
-    } else if (data === '\x1b[A') {
-      // Up arrow - previous command
+      
+    } else if (data === '\x1b[A') { // Up Arrow
       if (commandHistoryRef.current.length > 0 && historyIndexRef.current > 0) {
         historyIndexRef.current--;
         const prevCommand = commandHistoryRef.current[historyIndexRef.current];
-        // Clear current line
+        // Clear line and write previous command
         terminal.write(`\x1b[2K\r$ ${prevCommand}`);
         currentLineRef.current = prevCommand;
       }
-    } else if (data === '\x1b[B') {
-      // Down arrow - next command
-      if (
-        commandHistoryRef.current.length > 0 &&
-        historyIndexRef.current < commandHistoryRef.current.length - 1
-      ) {
+      
+    } else if (data === '\x1b[B') { // Down Arrow
+      if (commandHistoryRef.current.length > 0 && historyIndexRef.current < commandHistoryRef.current.length - 1) {
         historyIndexRef.current++;
         const nextCommand = commandHistoryRef.current[historyIndexRef.current];
         terminal.write(`\x1b[2K\r$ ${nextCommand}`);
         currentLineRef.current = nextCommand;
       } else {
-        // Clear line if no next command
         historyIndexRef.current = commandHistoryRef.current.length;
         terminal.write('\x1b[2K\r$ ');
         currentLineRef.current = '';
       }
-    } else if (data === '\u0003') {
-      // Ctrl+C - cancel current command
+      
+    } else if (data === '\u0003') { // Ctrl+C
       terminal.write('^C\r\n$ ');
-      terminalService.executeCommand(sessionId, '\x04').catch((error) => onError(error.message));
       currentLineRef.current = '';
-    } else {
-      // Normal character - echo and add to current line
-      terminal.write(data);
+      // Ideally cancel execution on backend too if possible
+      
+    } else { // Normal Char
+      terminal.write(data); // Local echo
       currentLineRef.current += data;
     }
-  }, [onError, sessionId]);
+  }, [sessionId]);
 
-  // Initialize xterm.js
+  // 1. Initialize xterm.js instance (runs ONCE)
   useEffect(() => {
-    if (!terminalRef.current || xtermRef.current) return;
+    if (xtermRef.current) return;
 
     const terminal = new Terminal({
-      fontFamily: "'JetBrains Mono Variable', 'SF Mono', 'Monaco', 'Inconsolata', 'Consolas', 'Courier New', monospace",
+      fontFamily: "'JetBrainsMono Nerd Font', 'FiraCode Nerd Font', monospace",
       fontSize: 14,
       lineHeight: 1.4,
       cursorBlink: true,
@@ -179,264 +229,371 @@ export function TerminalEmulator({
       scrollback: 10000,
       rows: 24,
       cols: 80,
-      // Mobile optimizations
       convertEol: true,
-      screenReaderMode: false,
-      windowsMode: false,
+      scrollOnUserInput: true,
+      drawBoldTextInBrightColors: true,
+      macOptionIsMeta: true,
+      macOptionClickForcesSelection: true,
     });
+
+    // Enable bracketed paste (proposed API not typed yet)
+    (terminal as Terminal & { options: { bracketedPasteMode?: boolean } }).options.bracketedPasteMode = true;
 
     const fitAddon = new FitAddon();
     const webLinksAddon = new WebLinksAddon();
+    const searchAddon = new SearchAddon();
+    const serializeAddon = new SerializeAddon();
 
+    // Load basic addons BEFORE terminal.open()
     terminal.loadAddon(fitAddon);
     terminal.loadAddon(webLinksAddon);
+    terminal.loadAddon(searchAddon);
+    terminal.loadAddon(serializeAddon);
 
-    terminal.open(terminalRef.current);
+    // Register OSC sequence handlers for shell integration
+    // OSC 7: Working directory reporting (used by many shells)
+    terminal.parser.registerOscHandler(7, (data: string) => {
+      try {
+        // Format: OSC 7 ; file://hostname/path ST
+        const match = data.match(/^file:\/\/[^/]*(.*)$/);
+        if (match) {
+          const cwd = decodeURIComponent(match[1]);
+          logger.debug('Working directory changed:', cwd);
+          // Store CWD for potential UI display or features
+          // Can be expanded to update state/store later
+        }
+      } catch (err) {
+        logger.debug('Failed to parse OSC 7', err);
+      }
+      return true; // Handler processed the sequence
+    });
+
+    // OSC 133: VS Code shell integration protocol
+    // Format: OSC 133 ; <marker> ST
+    // Markers: A (prompt start), B (prompt end), C (command start), D (command end)
+    terminal.parser.registerOscHandler(133, (data: string) => {
+      const marker = data.trim();
+      switch (marker) {
+        case 'A':
+          logger.debug('Shell integration: Prompt start');
+          // Can track semantic zones for future features
+          break;
+        case 'B':
+          logger.debug('Shell integration: Prompt end');
+          break;
+        case 'C':
+          logger.debug('Shell integration: Command start');
+          break;
+        case 'D':
+          logger.debug('Shell integration: Command end');
+          break;
+        default:
+          logger.debug('Shell integration: Unknown marker', marker);
+      }
+      return true;
+    });
+
+    // OSC 1337: iTerm2 inline images protocol
+    // Already handled by ImageAddon, but can add custom handling if needed
+
+    // Input handler
+    terminal.onData(handleTerminalInput);
 
     // Store refs
     xtermRef.current = terminal;
     fitAddonRef.current = fitAddon;
+    searchAddonRef.current = searchAddon;
+    serializeAddonRef.current = serializeAddon;
+
+    // Initial Prompt (Cloud only)
     ensurePrompt();
 
-    // Ensure terminal viewport has opaque background (fixes mobile rendering)
-    if (terminalRef.current) {
-      const viewport = terminalRef.current.querySelector('.xterm-viewport') as HTMLElement;
-      const screen = terminalRef.current.querySelector('.xterm-screen') as HTMLElement;
-      const canvas = terminalRef.current.querySelector('canvas') as HTMLCanvasElement;
-
-      if (viewport) {
-        viewport.style.backgroundColor = theme.background;
-      }
-      if (screen) {
-        screen.style.backgroundColor = theme.background;
-      }
-      if (canvas) {
-        // Force canvas to redraw
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          ctx.fillStyle = theme.background;
-          ctx.fillRect(0, 0, canvas.width, canvas.height);
-        }
-      }
-    }
-
-    // Delay fit() until DOM is fully rendered (fixes dimensions error)
-    const initTimeout = setTimeout(() => {
-      fitAddon.fit();
-      terminal.refresh(0, terminal.rows - 1); // Force refresh all rows
-    }, 100);
-
-    // Handle terminal input
-    terminal.onData((data) => {
-      handleTerminalInput(data);
-    });
-
-    // Resize observer
-    const resizeObserver = new ResizeObserver(() => {
-      try {
-        fitAddon.fit();
-        // Send resize to backend (optional - won't fail if endpoint missing)
-        if (terminal.rows && terminal.cols) {
-          terminalService.resizeTerminal(sessionId, terminal.cols, terminal.rows).catch(() => {
-            // Ignore resize errors - non-critical
-          });
-        }
-      } catch (_err) {
-        // Ignore fit errors during initialization
-      }
-    });
-
-    if (terminalRef.current) {
-      resizeObserver.observe(terminalRef.current);
-    }
-
-    initializedRef.current = true;
-
-    // Cleanup
     return () => {
-      clearTimeout(initTimeout);
-      resizeObserver.disconnect();
       terminal.dispose();
       xtermRef.current = null;
       fitAddonRef.current = null;
-      initializedRef.current = false;
+      searchAddonRef.current = null;
+      isOpenedRef.current = false;
     };
-  }, [sessionId, theme, onError, handleTerminalInput, ensurePrompt]);
+  }, [theme, handleTerminalInput, ensurePrompt]);
 
-  // Connect to SSE stream (with reconnection on error)
+  // 2. Handle Mounting/Rendering to DOM (runs when visible)
   useEffect(() => {
-    if (!initializedRef.current || !sessionId) return;
+    if (!isTerminalOpen || !terminalRef.current || !xtermRef.current) return;
 
-    onStatusChange('connecting');
+    // Open terminal into DOM if not already
+    if (!isOpenedRef.current) {
+      xtermRef.current.open(terminalRef.current);
+      isOpenedRef.current = true;
 
-    let eventSource: EventSource | null = null;
-    let reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
+      // Load renderer addons AFTER terminal.open() - critical for proper initialization
+      const unicode11Addon = new Unicode11Addon();
+      const imageAddon = new ImageAddon();
 
-    const connect = () => {
-      // Clean up previous connection
-      if (eventSource) {
-        terminalService.disconnectStream(eventSource);
+      try {
+        xtermRef.current.loadAddon(unicode11Addon);
+        xtermRef.current.unicode.activeVersion = '11';
+      } catch (err) {
+        logger.error('Unicode11 addon failed:', err);
       }
 
-      eventSource = terminalService.connectStream(sessionId);
-      eventSourceRef.current = eventSource;
-
-      const pingStartTime = Date.now();
-
-      // Handle 'connected' event - sent when SSE connection established
-      eventSource.addEventListener('connected', (event: Event) => {
-        const messageEvent = event as MessageEvent;
-        const data = JSON.parse(messageEvent.data);
-
-        if (xtermRef.current) {
-          xtermRef.current.write(`\x1b[32mConnected to sandbox ${data.sandboxId}\x1b[0m\r\n`);
-          ensurePrompt();
-          xtermRef.current.refresh(0, xtermRef.current.rows - 1);
-
-          // Small delay to ensure terminal is fully rendered before signaling connected
-          // This helps prevent race conditions on mobile/slower devices
-          setTimeout(() => {
-            onStatusChange('connected');
-          }, 50);
-        } else {
-          console.error('[TerminalEmulator] xtermRef is null when trying to write connected message!');
-          // Still signal connected even if write fails
-          onStatusChange('connected');
-        }
-
-        logger.debug('SSE connected', data);
-      });
-
-      // Handle 'output' event - command stdout/stderr
-      eventSource.addEventListener('output', (event: Event) => {
-        const messageEvent = event as MessageEvent;
-        const data = JSON.parse(messageEvent.data);
-
-        if (xtermRef.current) {
-          // Write stdout (convert \n to \r\n for proper line breaks)
-          if (data.stdout) {
-            const output = data.stdout.replace(/\n/g, '\r\n');
-            xtermRef.current.write(output);
-          }
-
-          // Write stderr in red (convert \n to \r\n for proper line breaks)
-          if (data.stderr) {
-            const output = data.stderr.replace(/\n/g, '\r\n');
-            xtermRef.current.write(`\x1b[31m${output}\x1b[0m`);
-          }
-        }
-      });
-
-      // Handle 'complete' event - command finished
-      eventSource.addEventListener('complete', (event: Event) => {
-        const messageEvent = event as MessageEvent;
-        const data = JSON.parse(messageEvent.data);
-
-        if (xtermRef.current) {
-          // Show prompt after command completes
-          if (!promptShownRef.current) {
-            promptShownRef.current = true;
-          }
-          xtermRef.current.write('\r\n$ ');
-        }
-
-        logger.debug('Command complete', data);
-      });
-
-      // Handle 'error' event - command execution error
-      eventSource.addEventListener('error', (event: Event) => {
-        // Guard against transport errors which don't have data property
-        if (!(event instanceof MessageEvent) || !event.data) {
-          logger.debug('SSE transport error (no data), ignoring custom error handler');
-          return;
-        }
-
-        const data = JSON.parse(event.data);
-
-        const errorMsg = data.error || 'Unknown error';
-        onError(errorMsg);
-
-        if (xtermRef.current) {
-          // Error message already has \r\n at end - no conversion needed here
-          xtermRef.current.write(`\x1b[31m[Error: ${errorMsg}]\x1b[0m\r\n`);
-          xtermRef.current.write('$ '); // Show prompt after error
-        }
-      });
-
-      // Handle 'heartbeat' event - keepalive
-      eventSource.addEventListener('heartbeat', (event: Event) => {
-        const messageEvent = event as MessageEvent;
-        const data = JSON.parse(messageEvent.data);
-
-        // Calculate latency from heartbeat timestamp
-        const latency = Date.now() - (data.timestamp || pingStartTime);
-        onLatencyUpdate(latency);
-      });
-
-      // Handle generic onopen (connection established)
-      eventSource.onopen = () => {
-        // Note: 'connected' event will provide actual session info
-        ensurePrompt();
-      };
-
-      // Handle generic onerror (connection lost - reconnect)
-      eventSource.onerror = (error) => {
-        logger.error('EventSource error', error);
-        onStatusChange('error');
-        onError('Connection lost. Reconnecting...');
-
-        // Auto-reconnect after 2 seconds
-        reconnectTimeout = setTimeout(() => {
-          logger.debug('Reconnecting SSE...');
-          connect();
-        }, 2000);
-      };
-    };
-
-    // Start initial connection
-    connect();
-
-    // Cleanup
-    return () => {
-      if (reconnectTimeout) clearTimeout(reconnectTimeout);
-      if (eventSource) {
-        terminalService.disconnectStream(eventSource);
+      try {
+        xtermRef.current.loadAddon(imageAddon);
+      } catch (err) {
+        logger.error('Image addon failed:', err);
       }
-      eventSourceRef.current = null;
-    };
-  }, [sessionId, onStatusChange, onLatencyUpdate, onError, ensurePrompt]);
 
-  // Focus terminal on touch/click (mobile support)
-  const handleContainerInteraction = useCallback(() => {
-    if (xtermRef.current) {
-      // Focus the xterm textarea
-      const textarea = document.querySelector('.xterm-helper-textarea') as HTMLTextAreaElement;
-      if (textarea) {
-        textarea.focus({ preventScroll: true });
-      } else {
-        // Fallback: try to focus the terminal directly
-        xtermRef.current.focus();
+      // TEMPORARILY DISABLED: Canvas renderer appears to have rendering issues
+      // Using DOM renderer for now until Canvas rendering is debugged
+      // try {
+      //   const canvasAddon = new CanvasAddon();
+      //   xtermRef.current.loadAddon(canvasAddon);
+      //   canvasAddonRef.current = canvasAddon;
+      //   logger.debug('Canvas addon loaded successfully');
+      // } catch (err) {
+      //   logger.error('Canvas renderer failed, using DOM fallback:', err);
+      // }
+      logger.debug('Using DOM renderer (Canvas temporarily disabled for debugging)');
+
+      // Style viewport
+      const viewport = terminalRef.current.querySelector('.xterm-viewport') as HTMLElement;
+      if (viewport) viewport.style.backgroundColor = theme.background;
+
+      // IMMEDIATELY fit the terminal (don't wait for setTimeout)
+      // This ensures the terminal is ready before data starts flowing
+      try {
+        fitAddonRef.current?.fit();
+
+        // Force initial render - CRITICAL for Canvas renderer
+        const terminal = xtermRef.current;
+        if (terminal && terminal.cols > 0 && terminal.rows > 0) {
+          // Clear screen and force full refresh
+          terminal.clear();
+          terminal.refresh(0, terminal.rows - 1);
+          terminal.scrollToBottom();
+
+          // Write a test character and immediately clear it to ensure Canvas is working
+          terminal.write(' ');
+          terminal.write('\b');
+        }
+      } catch (err) {
+        logger.error('Failed to fit terminal:', err);
       }
     }
+
+    // Additional delayed fit for any resize after mount
+    const timer = setTimeout(() => {
+        try {
+          fitAddonRef.current?.fit();
+          // Sync size with backend once fitted
+          const terminal = xtermRef.current;
+          if (terminal && terminal.cols > 0 && terminal.rows > 0) {
+             const provider = executionModeManager.getTerminalProvider();
+             provider?.resize(sessionId, terminal.cols, terminal.rows);
+             // Force refresh and focus
+             terminal.refresh(0, terminal.rows - 1);
+             terminal.scrollToBottom();
+             terminal.focus();
+          }
+        } catch (_err) { /* ignore */ }
+    }, 100);
+    
+    return () => clearTimeout(timer);
+  }, [isTerminalOpen, theme.background, sessionId]);
+
+  // 3. Handle Resizing (ResizeObserver) with debounce to avoid bursts
+  useEffect(() => {
+    if (!terminalRef.current || !xtermRef.current) return;
+
+    let resizeTimer: ReturnType<typeof setTimeout> | null = null;
+    const resizeObserver = new ResizeObserver(() => {
+      // Only resize if visible and opened
+      if (!isTerminalOpen || !isOpenedRef.current) return;
+
+      if (resizeTimer) clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => {
+        try {
+          fitAddonRef.current?.fit();
+          const terminal = xtermRef.current;
+          if (terminal && terminal.cols > 0 && terminal.rows > 0) {
+            const provider = executionModeManager.getTerminalProvider();
+            provider?.resize(sessionId, terminal.cols, terminal.rows);
+          }
+        } catch (_err) { /* ignore */ }
+      }, 100);
+    });
+
+    resizeObserver.observe(terminalRef.current);
+
+    return () => {
+      resizeObserver.disconnect();
+      if (resizeTimer) clearTimeout(resizeTimer);
+    };
+  }, [isTerminalOpen, sessionId]);
+
+
+  // Connection Management
+  useEffect(() => {
+    if (!sessionId) return;
+    onStatusChangeRef.current('connecting');
+
+    const provider = executionModeManager.getTerminalProvider();
+    if (!provider) {
+      onErrorRef.current('Terminal provider not available');
+      return;
+    }
+
+    let stream: EventSource | WebSocket | null = null;
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const connect = () => {
+      // Cleanup previous
+      if (stream) {
+        if (stream instanceof WebSocket) {
+          const h = wsHandlersRef.current;
+          if (h.message) stream.removeEventListener('message', h.message);
+          if (h.error) stream.removeEventListener('error', h.error);
+          if (h.close) stream.removeEventListener('close', h.close);
+          wsHandlersRef.current = { message: null, error: null, close: null };
+        }
+        provider.disconnectStream(stream);
+      }
+
+      stream = provider.connectStream(sessionId);
+      streamRef.current = stream;
+
+      if (!stream) {
+        onErrorRef.current('Failed to connect to terminal stream');
+        return;
+      }
+
+      if (stream instanceof EventSource) {
+        // --- SSE (Cloud) ---
+        stream.onopen = () => {
+          ensurePrompt(); // Ensure prompt on connect
+        };
+
+        stream.addEventListener('connected', (e: MessageEvent) => {
+          const data = JSON.parse(e.data);
+          if (xtermRef.current) {
+            xtermRef.current.write(`\x1b[32mConnected to sandbox ${data.sandboxId}\x1b[0m\r\n`);
+            ensurePrompt();
+            onStatusChangeRef.current('connected');
+            onSessionInfoRef.current?.({ provider: 'cloud' });
+          }
+        });
+
+        stream.addEventListener('output', (e: MessageEvent) => {
+          const data = JSON.parse(e.data);
+          const terminal = xtermRef.current;
+          // Defensive: Only write if terminal exists AND is opened to DOM
+          if (terminal && isOpenedRef.current) {
+            if (data.stdout) terminal.write(data.stdout.replace(/\n/g, '\r\n'));
+            if (data.stderr) terminal.write(`\x1b[31m${data.stderr.replace(/\n/g, '\r\n')}\x1b[0m`);
+          }
+        });
+
+        stream.addEventListener('complete', () => {
+          if (xtermRef.current) {
+            xtermRef.current.write('\r\n$ '); // Prompt after command
+          }
+        });
+
+        stream.onerror = () => {
+          onStatusChangeRef.current('error');
+          reconnectTimer = setTimeout(connect, 2000);
+        };
+
+      } else if (stream instanceof WebSocket) {
+        // --- WebSocket (Local) ---
+        const onMessage = (e: Event) => {
+          try {
+            const msg = JSON.parse((e as MessageEvent).data);
+            if (msg.type === 'connected') {
+               onStatusChangeRef.current('connected');
+               if (msg.shell || msg.workingDir) {
+                 onSessionInfoRef.current?.({ shell: msg.shell, workingDir: msg.workingDir, provider: 'local' });
+               }
+               // Don't force prompt here, PTY sends it
+            } else if (msg.type === 'output') {
+               const terminal = xtermRef.current;
+               // Defensive: Only write if terminal exists AND is opened to DOM
+               if (terminal && isOpenedRef.current) {
+                 terminal.write(msg.data);
+                 // Force refresh after write to ensure Canvas renders it
+                 if (canvasAddonRef.current) {
+                   terminal.scrollToBottom();
+                 }
+               } else {
+                 logger.error('Terminal not ready for output, data may be lost');
+               }
+            } else if (msg.type === 'exit') {
+               const terminal = xtermRef.current;
+               if (terminal && isOpenedRef.current) {
+                 terminal.write(`\r\n[Process exited: ${msg.exitCode}]\r\n`);
+               }
+             } else if (msg.type === 'pong' && typeof msg.ts === 'number') {
+                if (lastPingRef.current) {
+                  const rtt = Date.now() - lastPingRef.current;
+                  onLatencyUpdateRef.current(rtt);
+                  lastPingRef.current = null;
+                }
+            }
+          } catch (err) { logger.error('WS Parse Error', err); }
+        };
+
+        const onErrorHandler = () => {
+          onStatusChangeRef.current('error');
+          onErrorRef.current('Connection error');
+        };
+
+        const onClose = () => {
+          onStatusChangeRef.current('disconnected');
+          reconnectTimer = setTimeout(connect, 2000);
+        };
+
+        wsHandlersRef.current = { message: onMessage, error: onErrorHandler, close: onClose };
+        stream.addEventListener('message', onMessage);
+        stream.addEventListener('error', onErrorHandler);
+        stream.addEventListener('close', onClose);
+
+        if (stream.readyState === WebSocket.OPEN) {
+           onStatusChangeRef.current('connected');
+        }
+      }
+    };
+
+    connect();
+
+    return () => {
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      if (stream) {
+        if (stream instanceof WebSocket) {
+          const h = wsHandlersRef.current;
+          if (h.message) stream.removeEventListener('message', h.message);
+          if (h.error) stream.removeEventListener('error', h.error);
+          if (h.close) stream.removeEventListener('close', h.close);
+        }
+        provider.disconnectStream(stream);
+      }
+    };
+  }, [sessionId, executionMode, ensurePrompt]);
+  // NOTE: All callbacks (onStatusChange, onLatencyUpdate, onError, onSessionInfo) are accessed via stable refs.
+  // This prevents reconnection when parent component re-renders with new callback instances.
+  // ensurePrompt is memoized with empty deps, so it's stable.
+
+  // Focus handler
+  const handleFocus = useCallback(() => {
+    xtermRef.current?.focus();
   }, []);
 
   return (
     <div
       ref={terminalRef}
       className="flex-1 bg-white dark:bg-stone-900 cursor-text"
-      style={{
-        minHeight: '200px',
-        height: '100%',
-        width: '100%',
-        overflow: 'visible',
-        position: 'relative',
-        touchAction: 'manipulation' // Optimize touch events on mobile
-      }}
-      onClick={handleContainerInteraction}
-      onTouchStart={handleContainerInteraction}
-      role="textbox"
-      aria-label="Terminal input"
-      tabIndex={-1}
+      style={{ height: '100%', width: '100%', position: 'relative', touchAction: 'none', overflow: 'hidden' }}
+      onClick={handleFocus}
+      onTouchStart={handleFocus}
     />
   );
 }
