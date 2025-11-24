@@ -7,7 +7,6 @@ import { errorHandler, notFoundHandler } from './middleware/error.middleware';
 import executeRoutes from './routes/execute.routes';
 import sandboxRoutes from './routes/sandbox.routes';
 import terminalRoutes from './routes/terminal.routes';
-import localTerminalRoutes from './routes/localTerminal.routes';
 import { authGuard } from './middleware/auth.middleware';
 import { apiRateLimiter } from './middleware/rateLimit.middleware';
 import logger from './utils/logger';
@@ -37,7 +36,6 @@ const createApp = (): Application => {
   app.use('/api', executeRoutes);
   app.use('/api/sandbox', sandboxRoutes);
   app.use('/api/terminal', terminalRoutes);
-  app.use('/api/terminal/local', localTerminalRoutes);
 
   // Root endpoint
   app.get('/', (req, res) => {

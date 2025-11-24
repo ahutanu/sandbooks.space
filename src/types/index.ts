@@ -75,12 +75,6 @@ export interface QueuedCodeExecution {
 export interface NotesStore {
   notes: Note[];
   activeNoteId: string | null;
-  // Execution mode (replaces cloudExecutionEnabled)
-  executionMode: ExecutionMode;
-  localExecutionAvailable: boolean;
-  localTerminalAvailable: boolean;
-  // Legacy: kept for backward compatibility during migration
-  cloudExecutionEnabled?: boolean;
   darkModeEnabled: boolean;
   isSearchOpen: boolean;
   searchQuery: string;
@@ -92,7 +86,7 @@ export interface NotesStore {
   typewriterModeEnabled: boolean; // Typewriter mode toggle
   focusModeEnabled: boolean; // Focus mode (dims non-active paragraphs)
   tags: Tag[]; // All unique tags
-  // Terminal state (GLOBAL - single session for entire app)
+  // Terminal state (GLOBAL - single session for entire app, cloud-only)
   isTerminalOpen: boolean;
   terminalHeight: number;
   globalTerminalSessionId: string | null;
@@ -114,11 +108,6 @@ export interface NotesStore {
   updateNote: (id: string, updates: Partial<Note>) => void;
   deleteNote: (id: string) => void;
   setActiveNote: (id: string | null) => void;
-  // Execution mode management
-  setExecutionMode: (mode: ExecutionMode) => Promise<void>;
-  checkLocalExecutionAvailability: () => Promise<void>;
-  // Legacy: kept for backward compatibility
-  toggleCloudExecution?: () => Promise<void>;
   toggleDarkMode: () => void;
   exportNotes: () => string;
   importNotes: (json: string) => boolean;

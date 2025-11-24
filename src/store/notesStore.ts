@@ -12,10 +12,7 @@ import { showToast as toast } from '../utils/toast';
 import { createDefaultDocumentation } from '../utils/defaultDocumentation';
 import { recordOnboardingEvent, clearOnboardingEvents } from '../utils/onboardingMetrics';
 import { fetchWithTimeout } from '../utils/fetchWithTimeout';
-import { executionModeManager } from '../services/execution/executionModeManager';
-import { cloudTerminalProvider, localTerminalProvider } from '../services/terminal/index';
-import { isLocalExecutionSupported } from '../utils/platform';
-import type { ExecutionMode } from '../types';
+import { cloudTerminalProvider } from '../services/terminal/index';
 
 // Initialize dark mode from localStorage or system preference
 const initDarkMode = (): boolean => {
@@ -37,27 +34,6 @@ const initTypewriterMode = (): boolean => {
 const initFocusMode = (): boolean => {
   const stored = localStorage.getItem('sandbooks-focus-mode');
   return stored === 'true';
-};
-
-// Initialize execution mode from localStorage with backward compatibility
-const initExecutionMode = (): ExecutionMode => {
-  // Check for new execution mode setting
-  const storedMode = localStorage.getItem('sandbooks-execution-mode');
-  if (storedMode === 'cloud' || storedMode === 'local') {
-    return storedMode;
-  }
-  
-  // Backward compatibility: migrate from cloudExecutionEnabled
-  const oldCloudEnabled = localStorage.getItem('sandbooks-cloud-execution-enabled');
-  if (oldCloudEnabled !== null) {
-    const mode = oldCloudEnabled === 'true' ? 'cloud' : 'local';
-    localStorage.setItem('sandbooks-execution-mode', mode);
-    localStorage.removeItem('sandbooks-cloud-execution-enabled');
-    return mode;
-  }
-  
-  // Default to cloud mode
-  return 'cloud';
 };
 
 // API base URL from environment
@@ -88,12 +64,6 @@ export const useNotesStore = create<NotesStore>((set, get) => ({
   notes: initialNotes,
   // Auto-select first note on first launch
   activeNoteId: initialActiveNoteId,
-  // Execution mode (new)
-  executionMode: initExecutionMode(),
-  localExecutionAvailable: false, // Will be checked on mount
-  localTerminalAvailable: false, // Will be checked on mount
-  // Legacy: kept for backward compatibility
-  cloudExecutionEnabled: initExecutionMode() === 'cloud',
   darkModeEnabled: initDarkMode(),
   isSearchOpen: false,
   searchQuery: '',
@@ -215,137 +185,6 @@ export const useNotesStore = create<NotesStore>((set, get) => ({
 
   setActiveNote: (id: string | null) => {
     set({ activeNoteId: id });
-  },
-
-  // New execution mode management
-  setExecutionMode: async (mode: ExecutionMode) => {
-    // Check if local mode is available
-    if (mode === 'local') {
-      const available = await isLocalExecutionSupported();
-      if (!available) {
-        toast.error('Local execution is not available on this platform');
-        return;
-      }
-    }
-    
-    // Update execution mode manager
-    await executionModeManager.setMode(mode);
-    
-    // Switch terminal provider and reset session
-    const currentTerminalSessionId = get().globalTerminalSessionId;
-    const currentTerminalProvider = executionModeManager.getTerminalProvider();
-    
-    if (currentTerminalSessionId && currentTerminalProvider) {
-      try {
-        await currentTerminalProvider.destroySession(currentTerminalSessionId);
-      } catch (e) {
-        console.error('Failed to destroy previous terminal session', e);
-      }
-    }
-    
-    const newTerminalProvider = mode === 'local' ? localTerminalProvider : cloudTerminalProvider;
-    executionModeManager.setTerminalProvider(newTerminalProvider);
-    
-    // Update state
-    set({ 
-      executionMode: mode,
-      cloudExecutionEnabled: mode === 'cloud', // Legacy compatibility
-      globalTerminalSessionId: null, // Reset session ID to force recreation
-      globalTerminalStatus: 'disconnected'
-    });
-    
-    // Immediately initialize the new session
-    await get().initializeGlobalTerminalSession();
-    
-    // Persist to localStorage
-    localStorage.setItem('sandbooks-execution-mode', mode);
-    
-    recordOnboardingEvent('execution_mode_changed', { mode });
-    
-    if (mode === 'cloud') {
-      // ENABLING cloud execution - create sandbox
-      toast.loading('Setting up your workspace...', { id: 'execution-mode-toggle' });
-      set({ isCreatingSandbox: true, sandboxStatus: 'creating' });
-
-      try {
-        // Force recreate sandbox (get fresh environment)
-        const response = await fetchWithTimeout(`${API_BASE_URL}/api/sandbox/recreate`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...AUTH_HEADERS,
-          },
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to create sandbox');
-        }
-
-        const data = await response.json();
-
-        toast.success('Ready to run code', {
-          id: 'execution-mode-toggle',
-          duration: 4000,
-        });
-
-        set({
-          sandboxStatus: 'healthy',
-          sandboxId: data.sandboxId,
-          isCreatingSandbox: false,
-          retryCount: 0,
-          lastHealthCheck: Date.now(),
-        });
-      } catch (_error) {
-        toast.error('Unable to set up workspace. Try again.', {
-          id: 'execution-mode-toggle',
-        });
-
-        // Rollback state
-        set({
-          executionMode: 'local',
-          cloudExecutionEnabled: false,
-          sandboxStatus: 'unhealthy',
-          isCreatingSandbox: false,
-        });
-        localStorage.setItem('sandbooks-execution-mode', 'local');
-      }
-    } else {
-      // DISABLING cloud execution - destroy sandbox
-      toast.custom('ℹ️ Local execution mode enabled', { duration: 4000 });
-
-      // Optionally destroy sandbox to free resources (background operation)
-      try {
-        await fetchWithTimeout(`${API_BASE_URL}/api/sandbox/destroy`, {
-          method: 'POST',
-          headers: AUTH_HEADERS,
-        });
-      } catch (_error) {
-        // Silent failure - not critical
-      }
-
-      set({
-        sandboxStatus: 'unknown',
-        sandboxId: null,
-        isCreatingSandbox: false,
-      });
-    }
-  },
-
-  checkLocalExecutionAvailability: async () => {
-    const available = await isLocalExecutionSupported();
-    const terminalAvailable = await localTerminalProvider.isAvailable();
-    
-    set({
-      localExecutionAvailable: available,
-      localTerminalAvailable: terminalAvailable
-    });
-  },
-
-  // Legacy: kept for backward compatibility
-  toggleCloudExecution: async () => {
-    const currentMode = get().executionMode;
-    const newMode: ExecutionMode = currentMode === 'cloud' ? 'local' : 'cloud';
-    await get().setExecutionMode(newMode);
   },
 
   toggleDarkMode: () => {
@@ -513,27 +352,15 @@ export const useNotesStore = create<NotesStore>((set, get) => ({
     try {
       set({ globalTerminalStatus: 'connecting' });
 
-      // Get appropriate terminal provider based on execution mode
-      const executionMode = currentState.executionMode;
-      let terminalProvider;
-      
-      if (executionMode === 'local') {
-        terminalProvider = localTerminalProvider;
-        executionModeManager.setTerminalProvider(terminalProvider);
-      } else {
-        terminalProvider = cloudTerminalProvider;
-        executionModeManager.setTerminalProvider(terminalProvider);
-      }
-
-      // Check if provider is available
-      const available = await terminalProvider.isAvailable();
+      // Check if cloud terminal provider is available
+      const available = await cloudTerminalProvider.isAvailable();
       if (!available) {
-        throw new Error(`Terminal provider (${executionMode}) is not available`);
+        throw new Error('Cloud terminal provider is not available');
       }
 
-      // Create session using the appropriate provider
-      const session = await terminalProvider.createSession();
-      
+      // Create session using cloud terminal provider
+      const session = await cloudTerminalProvider.createSession();
+
       set({
         globalTerminalSessionId: session.sessionId,
         globalTerminalStatus: 'connecting',
@@ -703,10 +530,6 @@ export const useNotesStore = create<NotesStore>((set, get) => ({
   autoHealSandbox: async (options) => {
     const state = get();
 
-    if (!state.cloudExecutionEnabled) {
-      return false; // Cloud execution disabled - nothing to heal
-    }
-
     // Avoid overlapping heal attempts and throttle checks unless forced
     if (state.isCreatingSandbox) {
       return true;
@@ -774,10 +597,11 @@ export const useNotesStore = create<NotesStore>((set, get) => ({
       });
       return true;
     } catch (error) {
-      console.error('[Sandbooks] Auto-heal failed', error);
+      // Safely serialize error for logging to avoid valueOf errors
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('[Sandbooks] Auto-heal failed', errorMessage);
 
       // Check if error is circuit breaker related
-      const errorMessage = error instanceof Error ? error.message : String(error);
       const isCircuitBreakerOpen = errorMessage.toLowerCase().includes('circuit breaker');
 
       if (isCircuitBreakerOpen) {
@@ -900,12 +724,6 @@ export const useNotesStore = create<NotesStore>((set, get) => ({
 
     const state = get();
 
-    // Check execution mode - code execution only available in cloud mode
-    if (state.executionMode !== 'cloud') {
-      toast.error('Code execution is only available in cloud mode. Use the terminal for local execution.');
-      return;
-    }
-
     // Check if offline - queue execution instead
     if (!state.isOnline) {
       state.queueCodeExecution(noteId, blockId, block.code, block.language);
@@ -914,7 +732,7 @@ export const useNotesStore = create<NotesStore>((set, get) => ({
           error: 'Offline - execution queued. Will run when connection is restored.',
         },
       });
-      toast.custom('📡 Code execution queued for when you\'re back online', {
+      toast.custom('Code execution queued for when you are back online', {
         duration: 4000,
       });
       return;
@@ -922,10 +740,8 @@ export const useNotesStore = create<NotesStore>((set, get) => ({
 
     try {
       await get().autoHealSandbox({ reason: 'code-block' });
-      
-      // Use execution mode manager to get the appropriate provider
-      const executionProvider = executionModeManager.getExecutionProvider();
-      const result = await executionProvider.executeCode(block.code, block.language);
+
+      const result = await hopxService.executeCode(block.code, block.language);
 
       get().updateCodeBlock(noteId, blockId, {
         output: {
@@ -1178,14 +994,4 @@ export const createNewNote = (): Note => ({
     });
   }
   
-  // Check local execution availability on mount (async, don't block)
-  useNotesStore.getState().checkLocalExecutionAvailability().catch((error) => {
-    console.error('Failed to check local execution availability:', error);
-  });
-  
-  // Initialize execution mode manager with current mode (async, don't block)
-  const currentMode = useNotesStore.getState().executionMode;
-  executionModeManager.setMode(currentMode).catch((error) => {
-    console.error('Failed to set execution mode:', error);
-  });
 })();

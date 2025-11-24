@@ -14,15 +14,12 @@ import { recordOnboardingEvent } from '../../utils/onboardingMetrics';
 const LANGUAGES: Language[] = ['python', 'javascript', 'typescript', 'bash', 'go'];
 
 export const ExecutableCodeBlockComponent = ({ node, updateAttributes }: NodeViewProps) => {
-  const { executionMode, sandboxStatus, recreateSandbox, setSandboxStatus, darkModeEnabled } = useNotesStore();
+  const { sandboxStatus, recreateSandbox, setSandboxStatus, darkModeEnabled } = useNotesStore();
   const autoHealSandbox = useNotesStore((state) => state.autoHealSandbox);
   const activeNoteId = useNotesStore((state) => state.activeNoteId);
   const [isExecuting, setIsExecuting] = useState(false);
   const language = (node.attrs.language as Language) || 'python';
   const executionResult = node.attrs.executionResult as ExecutionResult | undefined;
-  
-  // Code execution only available in cloud mode
-  const canExecute = executionMode === 'cloud';
 
   // Backward compatibility: Try attrs.code first, fallback to textContent
   const code = (node.attrs.code as string) || node.textContent || '';
@@ -34,15 +31,8 @@ export const ExecutableCodeBlockComponent = ({ node, updateAttributes }: NodeVie
   };
 
   const handleExecute = async () => {
-    // Use the same backward-compatible code reference
     if (!code.trim()) {
       toast.error('Please add some code to run');
-      return;
-    }
-
-    // Check if execution is available
-    if (!canExecute) {
-      toast.error('Code execution is only available in cloud mode. Use the terminal for local execution.');
       return;
     }
 
@@ -51,10 +41,8 @@ export const ExecutableCodeBlockComponent = ({ node, updateAttributes }: NodeVie
 
     try {
       await autoHealSandbox({ reason: 'code-block-execute' });
-      
-      // Use execution mode manager to get the appropriate provider
-      const executionProvider = executionModeManager.getExecutionProvider();
-      const result = await executionProvider.executeCode(code, language);
+
+      const result = await executionModeManager.getExecutionProvider().executeCode(code, language);
 
       // Update sandbox status based on execution result
       if (result.sandboxStatus) {
@@ -160,7 +148,7 @@ export const ExecutableCodeBlockComponent = ({ node, updateAttributes }: NodeVie
 
           {/* Action Buttons - Icon Only */}
           <div className="flex items-center gap-1.5">
-            {executionResult && canExecute && (
+            {executionResult && (
               <button
                 onClick={handleClearOutput}
                 className="p-2 bg-stone-600/50 hover:bg-stone-500 text-stone-100 rounded-lg transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-400 active:scale-[0.95]"
@@ -171,7 +159,7 @@ export const ExecutableCodeBlockComponent = ({ node, updateAttributes }: NodeVie
                 <VscClearAll size={18} aria-hidden="true" />
               </button>
             )}
-            {sandboxStatus === 'unhealthy' && canExecute && (
+            {sandboxStatus === 'unhealthy' && (
               <button
                 onClick={handleRestartSandbox}
                 className="p-2 bg-amber-600/80 hover:bg-amber-600 text-white rounded-lg transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 active:scale-[0.95]"
@@ -184,21 +172,20 @@ export const ExecutableCodeBlockComponent = ({ node, updateAttributes }: NodeVie
                 </svg>
               </button>
             )}
-            {canExecute && (
-              <button
-                onClick={handleExecute}
-                disabled={isExecuting || sandboxStatus === 'creating'}
-                className={clsx(
-                  'p-2.5 rounded-lg transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 active:scale-[0.95]',
-                  isExecuting || sandboxStatus === 'creating'
-                    ? 'bg-stone-600/50 cursor-not-allowed text-stone-400 animate-pulseGlow'
-                    : 'bg-emerald-600 hover:bg-emerald-700 text-white focus-visible:ring-emerald-400 focus-visible:ring-offset-stone-800 shadow-emerald-500/30 shadow-lg hover:shadow-emerald-500/50 hover:shadow-xl'
-                )}
-                contentEditable={false}
-                aria-label={isExecuting ? 'Code is executing' : 'Run code'}
-                aria-busy={isExecuting}
-                title={isExecuting ? 'Running...' : 'Run code'}
-              >
+            <button
+              onClick={handleExecute}
+              disabled={isExecuting || sandboxStatus === 'creating'}
+              className={clsx(
+                'p-2.5 rounded-lg transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 active:scale-[0.95]',
+                isExecuting || sandboxStatus === 'creating'
+                  ? 'bg-stone-600/50 cursor-not-allowed text-stone-400 animate-pulseGlow'
+                  : 'bg-emerald-600 hover:bg-emerald-700 text-white focus-visible:ring-emerald-400 focus-visible:ring-offset-stone-800 shadow-emerald-500/30 shadow-lg hover:shadow-emerald-500/50 hover:shadow-xl'
+              )}
+              contentEditable={false}
+              aria-label={isExecuting ? 'Code is executing' : 'Run code'}
+              aria-busy={isExecuting}
+              title={isExecuting ? 'Running...' : 'Run code'}
+            >
                 {isExecuting ? (
                   <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                 ) : (
@@ -207,8 +194,7 @@ export const ExecutableCodeBlockComponent = ({ node, updateAttributes }: NodeVie
                     <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 )}
-              </button>
-            )}
+            </button>
           </div>
         </div>
 

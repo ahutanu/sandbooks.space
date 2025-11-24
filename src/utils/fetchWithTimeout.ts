@@ -1,5 +1,7 @@
-// Timeout configuration - fail fast for better UX
-const FETCH_TIMEOUT_MS = 3000; // 3 seconds max per request
+// Timeout configuration
+// Production note: Azure App Service can have cold starts (5-10s)
+// so we use a longer timeout for production reliability
+const FETCH_TIMEOUT_MS = 15000; // 15 seconds max per request
 
 /**
  * Fetch with timeout - aborts request after specified duration

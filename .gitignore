@@ -37,6 +37,7 @@ backend/dist/
 backend/build/
 backend-artifact.zip
 deployments/
+dev-dist/
 
 # Editor directories and files
 .vscode/*
@@ -104,6 +105,9 @@ docs/archive/
 
 # docs not needed, we focus on living docs within app
 docs/
+
+# images
+*.png
 
 #git
 COMMIT_MESSAGE.txt

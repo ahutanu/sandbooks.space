@@ -36,12 +36,8 @@ export const CodeMirrorBlock = ({ noteId, block }: CodeMirrorBlockProps) => {
   const {
     updateCodeBlock,
     deleteCodeBlock,
-    executeCodeBlock,
-    executionMode
+    executeCodeBlock
   } = useNotesStore();
-  
-  // Code execution only available in cloud mode
-  const canExecute = executionMode === 'cloud';
 
   const [isExecuting, setIsExecuting] = useState(false);
 
@@ -75,11 +71,6 @@ export const CodeMirrorBlock = ({ noteId, block }: CodeMirrorBlockProps) => {
 
   // Execute code via execution provider
   const handleExecute = async () => {
-    if (!canExecute) {
-      toast.error('Code execution is only available in cloud mode. Use the terminal for local execution.');
-      return;
-    }
-
     if (!block.code.trim()) {
       toast.error('Please add some code to run');
       return;
@@ -143,7 +134,7 @@ export const CodeMirrorBlock = ({ noteId, block }: CodeMirrorBlockProps) => {
 
           {/* Window Controls */}
           <div className="flex items-center gap-1 h-full pr-2">
-            {block.output && canExecute && (
+            {block.output && (
               <button
                 onClick={handleClearOutput}
                 className="p-1.5 hover:bg-[#2a2d2e] rounded text-[#858585] hover:text-[#cccccc] transition-colors"
@@ -167,30 +158,28 @@ export const CodeMirrorBlock = ({ noteId, block }: CodeMirrorBlockProps) => {
               </svg>
             </button>
 
-            {canExecute && (
-              <button
-                onClick={handleExecute}
-                disabled={isExecuting}
-                className={clsx(
-                  'ml-1 p-1.5 rounded transition-colors',
-                  isExecuting
-                    ? 'cursor-not-allowed text-[#858585]'
-                    : 'hover:bg-[#0e639c] text-[#cccccc] hover:text-white'
-                )}
-                style={{ backgroundColor: isExecuting ? '#2a2d2e' : '#007acc' }}
-                aria-label={isExecuting ? 'Code is executing' : 'Run code'}
-                aria-busy={isExecuting}
-                title={isExecuting ? 'Running...' : 'Run code'}
-              >
-                {isExecuting ? (
-                  <div className="w-3.5 h-3.5 border-2 border-[#858585] border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+            <button
+              onClick={handleExecute}
+              disabled={isExecuting}
+              className={clsx(
+                'ml-1 p-1.5 rounded transition-colors',
+                isExecuting
+                  ? 'cursor-not-allowed text-[#858585]'
+                  : 'hover:bg-[#0e639c] text-[#cccccc] hover:text-white'
+              )}
+              style={{ backgroundColor: isExecuting ? '#2a2d2e' : '#007acc' }}
+              aria-label={isExecuting ? 'Code is executing' : 'Run code'}
+              aria-busy={isExecuting}
+              title={isExecuting ? 'Running...' : 'Run code'}
+            >
+              {isExecuting ? (
+                <div className="w-3.5 h-3.5 border-2 border-[#858585] border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M8 5v14l11-7z" />
                   </svg>
                 )}
               </button>
-            )}
           </div>
         </div>
 
@@ -291,7 +280,7 @@ export const CodeMirrorBlock = ({ noteId, block }: CodeMirrorBlockProps) => {
             )}
           </div>
           <div>
-            {isExecuting ? 'Executing...' : canExecute ? 'Ready' : ''}
+            {isExecuting ? 'Executing...' : 'Ready'}
           </div>
         </div>
       </div>

@@ -90,6 +90,9 @@ Single global store (`src/store/notesStore.ts`):
 - Dual execution modes:
   - **Cloud Mode (REPL)**: Hopx sandbox, SSE streaming, command-line buffering
   - **Local Mode (PTY)**: Native shell via node-pty, WebSocket streaming, raw terminal
+    - **IMPORTANT**: Local mode only works when backend runs on user's machine (localhost)
+    - Web app (sandbooks.space): Cloud mode only
+    - Local installation: Both modes available
 - Terminal Emulator: xterm.js with GPU acceleration (WebGL)
 - Advanced Features:
   - Unicode 11 support (emoji, CJK, RTL)
@@ -99,6 +102,9 @@ Single global store (`src/store/notesStore.ts`):
   - Terminal size validation (10x2 to 1000x1000)
 
 **Local Terminal** (`localTerminal.service.ts`):
+- **Architecture**: Backend runs on user's machine (localhost)
+- **Security**: Frontend validates backend URL is localhost before enabling
+- **Production**: Automatically disabled when backend is remote
 - PTY process spawning via node-pty
 - Shell detection (zsh, bash, fish, PowerShell, cmd)
 - Login shell mode (-l -i) for proper profile loading
@@ -107,6 +113,7 @@ Single global store (`src/store/notesStore.ts`):
 - WebSocket streaming for low latency
 - Health check endpoint for session validation
 - Graceful shutdown (SIGTERM → SIGKILL)
+- **Use Case**: Users running `npm start` locally for full local terminal access
 
 **Cloud Terminal** (`terminalSessionManager.ts`):
 - Isolated Hopx sandbox per session

@@ -12,7 +12,7 @@ const EnvSchema = z.object({
   RATE_LIMIT_WINDOW_MS: z.string().regex(/^\d+$/).transform(Number).default('60000'),
   RATE_LIMIT_MAX_REQUESTS: z.string().regex(/^\d+$/).transform(Number).default('1000'),
   MAX_EXECUTION_TIMEOUT: z.string().regex(/^\d+$/).transform(Number).default('30'),
-  LOG_LEVEL: z.enum(['error', 'warn', 'info', 'debug']).default('info')
+  LOG_LEVEL: z.enum(['error', 'warn', 'info', 'debug']).default('info'),
 });
 
 export type Env = z.infer<typeof EnvSchema>;

@@ -8,13 +8,8 @@ interface HeaderProps {
 }
 
 export const Header = ({ onToggleMobileSidebar }: HeaderProps) => {
-  const { notes, activeNoteId, executionMode, setExecutionMode, localExecutionAvailable, darkModeEnabled, toggleDarkMode, isSidebarOpen, toggleSidebar, isCreatingSandbox, isTerminalOpen, toggleTerminal, addNote } = useNotesStore();
-  
-  // Handle execution mode toggle
-  const handleExecutionModeToggle = async () => {
-    const newMode = executionMode === 'cloud' ? 'local' : 'cloud';
-    await setExecutionMode(newMode);
-  };
+  const { notes, activeNoteId, darkModeEnabled, toggleDarkMode, isSidebarOpen, toggleSidebar, isTerminalOpen, toggleTerminal, addNote } = useNotesStore();
+
   const activeNote = notes.find(n => n.id === activeNoteId);
 
   const handleNewNote = () => {
@@ -91,49 +86,6 @@ export const Header = ({ onToggleMobileSidebar }: HeaderProps) => {
             <path d="M12 3 A 9 9 0 0 1 12 21 Z" fill="currentColor" />
             <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeWidth="1.5" opacity="0.4" />
           </svg>
-        </button>
-        <button
-          onClick={handleExecutionModeToggle}
-          disabled={executionMode === 'local' && !localExecutionAvailable}
-          className={clsx(
-            "p-1.5 md:p-2 lg:p-2.5 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-lg transition-all duration-200 group focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-blue-600 focus-visible:ring-offset-3 active:scale-[0.98]",
-            isCreatingSandbox && "opacity-80",
-            executionMode === 'local' && !localExecutionAvailable && "opacity-50 cursor-not-allowed"
-          )}
-          data-testid="execution-toggle"
-          title={
-            isCreatingSandbox
-              ? "Creating sandbox..."
-              : executionMode === 'cloud'
-                ? "Cloud execution enabled - Click to switch to local"
-                : localExecutionAvailable
-                  ? "Local execution enabled - Click to switch to cloud"
-                  : "Local execution not available on this platform"
-          }
-          aria-label={
-            isCreatingSandbox
-              ? "Cancel sandbox creation"
-              : executionMode === 'cloud'
-                ? "Switch to local execution"
-                : "Switch to cloud execution"
-          }
-        >
-          {isCreatingSandbox ? (
-            <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-          ) : (
-            <>
-              {executionMode === 'cloud' ? (
-                <svg className="w-5 h-5 text-stone-600 dark:text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6" />
-                </svg>
-              ) : (
-                <svg className="w-5 h-5 text-stone-600 dark:text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                </svg>
-              )}
-            </>
-          )}
         </button>
         <button
           onClick={toggleTerminal}

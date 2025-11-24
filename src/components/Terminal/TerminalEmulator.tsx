@@ -84,7 +84,6 @@ export function TerminalEmulator({
   onError,
   onSessionInfo,
 }: TerminalEmulatorProps) {
-  const executionMode = useNotesStore((state) => state.executionMode);
   const isTerminalOpen = useNotesStore((state) => state.isTerminalOpen);
   const terminalRef = useRef<HTMLDivElement>(null);
 
@@ -577,7 +576,7 @@ export function TerminalEmulator({
         provider.disconnectStream(stream);
       }
     };
-  }, [sessionId, executionMode, ensurePrompt]);
+  }, [sessionId, ensurePrompt]);
   // NOTE: All callbacks (onStatusChange, onLatencyUpdate, onError, onSessionInfo) are accessed via stable refs.
   // This prevents reconnection when parent component re-renders with new callback instances.
   // ensurePrompt is memoized with empty deps, so it's stable.

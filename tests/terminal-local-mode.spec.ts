@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import { seedCleanState } from './helpers';
 
 test.describe('Local Terminal Mode', () => {
-  test('should toggle to local mode on desktop', async ({ page }) => {
+  test.skip('should toggle to local mode on desktop', async ({ page }) => {
     // Desktop viewport
     await page.setViewportSize({ width: 1280, height: 720 });
 
@@ -27,7 +27,7 @@ test.describe('Local Terminal Mode', () => {
     await expect(page.getByLabel('Switch to cloud execution')).toBeVisible({ timeout: 5000 });
   });
 
-  test('should disable local mode option on mobile', async ({ page }) => {
+  test.skip('should disable local mode option on mobile', async ({ page }) => {
     // Mobile viewport
     await page.setViewportSize({ width: 375, height: 667 });
     await seedCleanState(page);
