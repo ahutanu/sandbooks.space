@@ -3,6 +3,7 @@ import {
   createSession,
   getSession,
   destroySession,
+  sendInput,
   executeCommand,
   streamOutput,
   resizeTerminal,
@@ -40,12 +41,18 @@ router.get('/sessions/:sessionId', getSession);
 router.delete('/sessions/:sessionId', destroySession);
 
 // ============================================================================
-// COMMAND EXECUTION
+// TERMINAL INPUT/OUTPUT
 // ============================================================================
 
 /**
+ * POST /api/terminal/:sessionId/input
+ * Send input to terminal session (preferred method)
+ */
+router.post('/:sessionId/input', sendInput);
+
+/**
  * POST /api/terminal/:sessionId/execute
- * Execute a command in a terminal session
+ * DEPRECATED: Execute a command (backward compatibility only)
  */
 router.post('/:sessionId/execute', executeCommand);
 

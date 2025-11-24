@@ -513,7 +513,7 @@ describe('ExecutableCodeBlockComponent', () => {
         });
     });
 
-    it('handles execution when cloud execution is disabled', () => {
+    it('shows run button when cloud execution is disabled', () => {
         vi.mocked(useNotesStore).mockReturnValueOnce({
             ...mockStore,
             executionMode: 'local',
@@ -536,9 +536,9 @@ describe('ExecutableCodeBlockComponent', () => {
             />
         );
 
-        // Run button should not be visible when cloud execution is disabled
+        // Run button is always visible, can execute locally or in cloud
         const runButton = screen.queryByLabelText('Run code');
-        expect(runButton).not.toBeInTheDocument();
+        expect(runButton).toBeInTheDocument();
     });
 
     it('disables run button when sandbox is creating', () => {

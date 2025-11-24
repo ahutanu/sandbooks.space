@@ -9,7 +9,7 @@ import type { CreateSessionResponse } from '../../types/terminal';
 export class CloudTerminalProvider implements TerminalProviderInterface {
   readonly provider = 'cloud' as const;
   readonly name = 'Cloud Terminal (Hopx)';
-  readonly mode = 'repl' as const;
+  readonly mode = 'terminal' as const;
 
   async isAvailable(): Promise<boolean> {
     // Cloud terminal is available if backend is reachable
@@ -27,13 +27,11 @@ export class CloudTerminalProvider implements TerminalProviderInterface {
   }
 
   async sendInput(sessionId: string, data: string): Promise<void> {
-    // For REPL mode, data is the full command
-    await terminalService.executeCommand(sessionId, data);
+    await terminalService.sendInput(sessionId, data);
   }
 
-  async resize(_sessionId: string, _cols: number, _rows: number): Promise<void> {
-    // Cloud terminal doesn't support resize yet
-    // Or it's handled automatically by the sandbox
+  async resize(sessionId: string, cols: number, rows: number): Promise<void> {
+    await terminalService.resize(sessionId, cols, rows);
   }
 
   connectStream(sessionId: string): EventSource | null {

@@ -82,6 +82,7 @@ tmp/
 backend/backend/
 backend/server.log
 backend/*.log
+backend/test-*.js
 
 # OS generated files
 .DS_Store

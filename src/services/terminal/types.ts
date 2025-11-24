@@ -3,10 +3,11 @@ export type TerminalProvider = 'cloud' | 'local';
 export interface TerminalProviderInterface {
   readonly provider: TerminalProvider;
   readonly name: string;
-  
-  // 'pty' means the provider expects raw keystrokes and handles echo/history (real terminal)
-  // 'repl' means the provider expects full command lines and the frontend handles echo/history
-  readonly mode: 'pty' | 'repl';
+
+  // 'pty' means the provider expects raw keystrokes and handles echo/history (real terminal - local)
+  // 'terminal' means the provider uses WebSocket PTY with persistent state (cloud)
+  // 'repl' means the provider expects full command lines and the frontend handles echo/history (legacy)
+  readonly mode: 'pty' | 'terminal' | 'repl';
   
   readonly isAvailable: () => Promise<boolean>;
   

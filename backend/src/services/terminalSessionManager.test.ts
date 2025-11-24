@@ -1,19 +1,37 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { EventEmitter } from 'events';
 import type { Response } from 'express';
-import type { CommandHistoryEntry, ExecuteCommandRequest } from '../types/terminal.types';
+
+const createMockWebSocket = () => {
+  const emitter = new EventEmitter();
+  return {
+    on: emitter.on.bind(emitter),
+    emit: emitter.emit.bind(emitter),
+    close: vi.fn(),
+    send: vi.fn()
+  };
+};
 
 const createSandbox = () => {
-  const run = vi.fn().mockResolvedValue({
-    exit_code: 0,
-    stdout: '',
-    stderr: ''
-  });
+  const mockWs = createMockWebSocket();
 
   return {
-    commands: { run },
+    init: vi.fn().mockResolvedValue(undefined),
+    commands: {
+      run: vi.fn().mockResolvedValue({
+        exit_code: 0,
+        stdout: '',
+        stderr: ''
+      })
+    },
     env: { update: vi.fn() },
-    kill: vi.fn().mockResolvedValue(undefined)
+    terminal: {
+      connect: vi.fn().mockResolvedValue(mockWs),
+      sendInput: vi.fn(),
+      resize: vi.fn()
+    },
+    kill: vi.fn().mockResolvedValue(undefined),
+    _mockWebSocket: mockWs
   };
 };
 
@@ -26,7 +44,7 @@ const createResponse = () => {
   };
 };
 
-describe('TerminalSessionManager command timeouts', () => {
+describe('TerminalSessionManager with Terminal API', () => {
   beforeEach(() => {
     vi.resetModules();
   });
@@ -35,7 +53,7 @@ describe('TerminalSessionManager command timeouts', () => {
     vi.clearAllMocks();
   });
 
-  it('passes request timeout through to sandbox.commands.run', async () => {
+  it('creates session and connects to WebSocket terminal', async () => {
     const mockSandbox = createSandbox();
 
     vi.doMock('./hopx.service', () => ({
@@ -49,48 +67,17 @@ describe('TerminalSessionManager command timeouts', () => {
     const { default: manager } = await import('./terminalSessionManager');
 
     const session = await manager.createSession();
-    const request: ExecuteCommandRequest = {
-      command: 'sleep 5',
-      language: 'bash',
-      timeout: 120000
-    };
-    const historyEntry: CommandHistoryEntry = {
-      commandId: 'cmd-1',
-      command: request.command,
-      timestamp: Date.now()
-    };
 
-    await (manager as unknown as {
-      executeCommandAsync: (
-        sessionId: string,
-        commandId: string,
-        request: ExecuteCommandRequest,
-        historyEntry: CommandHistoryEntry,
-        startTime: number
-      ) => Promise<void>;
-    }).executeCommandAsync(
-      session.sessionId,
-      historyEntry.commandId,
-      request,
-      historyEntry,
-      Date.now()
-    );
-
-    expect(mockSandbox.commands.run).toHaveBeenCalledWith(
-      'sleep 5',
-      expect.objectContaining({ timeoutSeconds: 120 })
-    );
+    expect(session.sessionId).toBeDefined();
+    expect(session.status).toBe('active');
+    expect(mockSandbox.init).toHaveBeenCalled();
+    expect(mockSandbox.terminal.connect).toHaveBeenCalled();
 
     await manager.shutdown();
   });
 
-  it('uses default timeout when none is provided', async () => {
+  it('sends input to WebSocket terminal', async () => {
     const mockSandbox = createSandbox();
-    mockSandbox.commands.run = vi.fn().mockResolvedValue({
-      exit_code: 0,
-      stdout: 'ok',
-      stderr: ''
-    });
 
     vi.doMock('./hopx.service', () => ({
       __esModule: true,
@@ -103,71 +90,48 @@ describe('TerminalSessionManager command timeouts', () => {
     const { default: manager } = await import('./terminalSessionManager');
 
     const session = await manager.createSession();
-    const request: ExecuteCommandRequest = {
-      command: 'echo ready',
-      language: 'bash'
-    };
-    const historyEntry: CommandHistoryEntry = {
-      commandId: 'cmd-2',
-      command: request.command,
-      timestamp: Date.now()
-    };
+    await manager.sendInput(session.sessionId, 'ls\n');
 
-    await (manager as unknown as {
-      executeCommandAsync: (
-        sessionId: string,
-        commandId: string,
-        request: ExecuteCommandRequest,
-        historyEntry: CommandHistoryEntry,
-        startTime: number
-      ) => Promise<void>;
-    }).executeCommandAsync(
-      session.sessionId,
-      historyEntry.commandId,
-      request,
-      historyEntry,
-      Date.now()
-    );
-
-    expect(mockSandbox.commands.run).toHaveBeenCalledWith(
-      'echo ready',
-      expect.objectContaining({ timeoutSeconds: 30 })
+    expect(mockSandbox.terminal.sendInput).toHaveBeenCalledWith(
+      mockSandbox._mockWebSocket,
+      'ls\n'
     );
 
     await manager.shutdown();
   });
 
-  it('creates and destroys sessions with state tracking', async () => {
+  it('resizes terminal via WebSocket', async () => {
     const mockSandbox = createSandbox();
-    const destroySandboxInstance = vi.fn().mockResolvedValue(undefined);
 
     vi.doMock('./hopx.service', () => ({
       __esModule: true,
       default: {
-        createIsolatedSandbox: vi.fn().mockResolvedValue({ sandbox: mockSandbox, sandboxId: 'sandbox-state' }),
-        destroySandboxInstance
+        createIsolatedSandbox: vi.fn().mockResolvedValue({ sandbox: mockSandbox, sandboxId: 'sandbox-3' }),
+        destroySandboxInstance: vi.fn().mockResolvedValue(undefined)
       }
     }));
 
     const { default: manager } = await import('./terminalSessionManager');
 
     const session = await manager.createSession();
-    expect(session.status).toBe('active');
+    await manager.resize(session.sessionId, 80, 24);
 
-    await manager.destroySession(session.sessionId);
-    expect(destroySandboxInstance).toHaveBeenCalled();
+    expect(mockSandbox.terminal.resize).toHaveBeenCalledWith(
+      mockSandbox._mockWebSocket,
+      80,
+      24
+    );
+
+    await manager.shutdown();
   });
 
-  it('executes commands, updates env, and streams SSE output', async () => {
+  it('forwards WebSocket messages to SSE clients', async () => {
     const mockSandbox = createSandbox();
-    mockSandbox.commands.run = vi.fn()
-      .mockResolvedValueOnce({ exit_code: 0, stdout: 'done', stderr: '' })
-      .mockResolvedValueOnce({ exit_code: 0, stdout: '/tmp\n', stderr: '' });
 
     vi.doMock('./hopx.service', () => ({
       __esModule: true,
       default: {
-        createIsolatedSandbox: vi.fn().mockResolvedValue({ sandbox: mockSandbox, sandboxId: 'sandbox-sse' }),
+        createIsolatedSandbox: vi.fn().mockResolvedValue({ sandbox: mockSandbox, sandboxId: 'sandbox-4' }),
         destroySandboxInstance: vi.fn().mockResolvedValue(undefined)
       }
     }));
@@ -177,36 +141,83 @@ describe('TerminalSessionManager command timeouts', () => {
     const response = createResponse();
     manager.registerSSEClient(session.sessionId, response as unknown as Response);
 
-    const request: ExecuteCommandRequest = {
-      command: 'export TEST=123; cd /tmp',
-      language: 'bash'
-    };
+    const mockMessage = JSON.stringify({ type: 'output', data: 'hello' });
+    mockSandbox._mockWebSocket.emit('message', Buffer.from(mockMessage));
 
-    const historyEntry: CommandHistoryEntry = {
-      commandId: 'cmd-3',
-      command: request.command,
-      timestamp: Date.now()
-    };
-
-    await (manager as unknown as {
-      executeCommandAsync: (
-        sessionId: string,
-        commandId: string,
-        request: ExecuteCommandRequest,
-        historyEntry: CommandHistoryEntry,
-        startTime: number
-      ) => Promise<void>;
-    }).executeCommandAsync(
-      session.sessionId,
-      historyEntry.commandId,
-      request,
-      historyEntry,
-      Date.now()
+    expect(response.write).toHaveBeenCalledWith(
+      expect.stringContaining('terminal_message')
     );
 
-    expect(mockSandbox.env.update).toHaveBeenCalledWith({ TEST: '123' });
-    expect(response.write).toHaveBeenCalledWith(expect.stringContaining('output'));
-    expect(response.write).toHaveBeenCalledWith(expect.stringContaining('complete'));
+    await manager.shutdown();
+  });
+
+  it('closes WebSocket on session destroy', async () => {
+    const mockSandbox = createSandbox();
+
+    vi.doMock('./hopx.service', () => ({
+      __esModule: true,
+      default: {
+        createIsolatedSandbox: vi.fn().mockResolvedValue({ sandbox: mockSandbox, sandboxId: 'sandbox-5' }),
+        destroySandboxInstance: vi.fn().mockResolvedValue(undefined)
+      }
+    }));
+
+    const { default: manager } = await import('./terminalSessionManager');
+
+    const session = await manager.createSession();
+    await manager.destroySession(session.sessionId);
+
+    expect(mockSandbox._mockWebSocket.close).toHaveBeenCalled();
+
+    await manager.shutdown();
+  });
+
+  it('handles WebSocket errors gracefully', async () => {
+    const mockSandbox = createSandbox();
+
+    vi.doMock('./hopx.service', () => ({
+      __esModule: true,
+      default: {
+        createIsolatedSandbox: vi.fn().mockResolvedValue({ sandbox: mockSandbox, sandboxId: 'sandbox-6' }),
+        destroySandboxInstance: vi.fn().mockResolvedValue(undefined)
+      }
+    }));
+
+    const { default: manager } = await import('./terminalSessionManager');
+    const session = await manager.createSession();
+    const response = createResponse();
+    manager.registerSSEClient(session.sessionId, response as unknown as Response);
+
+    mockSandbox._mockWebSocket.emit('error', new Error('WebSocket error'));
+
+    expect(response.write).toHaveBeenCalledWith(
+      expect.stringContaining('error')
+    );
+
+    await manager.shutdown();
+  });
+
+  it('handles WebSocket close event', async () => {
+    const mockSandbox = createSandbox();
+
+    vi.doMock('./hopx.service', () => ({
+      __esModule: true,
+      default: {
+        createIsolatedSandbox: vi.fn().mockResolvedValue({ sandbox: mockSandbox, sandboxId: 'sandbox-7' }),
+        destroySandboxInstance: vi.fn().mockResolvedValue(undefined)
+      }
+    }));
+
+    const { default: manager } = await import('./terminalSessionManager');
+    const session = await manager.createSession();
+    const response = createResponse();
+    manager.registerSSEClient(session.sessionId, response as unknown as Response);
+
+    mockSandbox._mockWebSocket.emit('close');
+
+    expect(response.write).toHaveBeenCalledWith(
+      expect.stringContaining('info')
+    );
 
     await manager.shutdown();
   });

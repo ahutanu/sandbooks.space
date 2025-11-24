@@ -71,7 +71,31 @@ class TerminalService {
   }
 
   /**
+   * Send input to terminal session (preferred method)
+   */
+  async sendInput(sessionId: string, data: string): Promise<void> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/terminal/${sessionId}/input`, {
+        method: 'POST',
+        headers: jsonHeaders,
+        body: JSON.stringify({ data }),
+      });
+
+      if (!response.ok) {
+        const error: ErrorResponse = await response.json();
+        throw new Error(error.error || `HTTP ${response.status}`);
+      }
+    } catch (error) {
+      if (error instanceof Error) {
+        throw new Error(`Failed to send input: ${error.message}`);
+      }
+      throw new Error('Failed to send input: Unknown error');
+    }
+  }
+
+  /**
    * Execute a command in a terminal session
+   * DEPRECATED: Use sendInput() instead
    */
   async executeCommand(
     sessionId: string,
@@ -109,13 +133,20 @@ class TerminalService {
    * - 'ping': Heartbeat to keep connection alive
    */
   connectStream(sessionId: string): EventSource {
+    console.log('[TerminalService] connectStream called with sessionId:', sessionId);
     const tokenParam = API_TOKEN ? `?token=${encodeURIComponent(API_TOKEN)}` : '';
     const url = `${API_BASE_URL}/api/terminal/${sessionId}/stream${tokenParam}`;
+    console.log('[TerminalService] Creating EventSource with URL:', url);
     const eventSource = new EventSource(url);
+    console.log('[TerminalService] EventSource created, readyState:', eventSource.readyState);
 
     // Log connection errors for debugging
     eventSource.onerror = (error) => {
-      console.error('[TerminalService] SSE connection error:', error);
+      console.error('[TerminalService] SSE connection error:', error, 'readyState:', eventSource.readyState);
+    };
+
+    eventSource.onopen = () => {
+      console.log('[TerminalService] SSE connection opened successfully');
     };
 
     return eventSource;
@@ -133,9 +164,9 @@ class TerminalService {
   }
 
   /**
-   * Resize the terminal (send to backend if pty needs resizing)
+   * Resize the terminal
    */
-  async resizeTerminal(
+  async resize(
     sessionId: string,
     cols: number,
     rows: number
@@ -152,9 +183,22 @@ class TerminalService {
         throw new Error(error.error || `HTTP ${response.status}`);
       }
     } catch (error) {
-      // Non-critical - log and continue
-      console.warn('[TerminalService] Failed to resize terminal:', error);
+      if (error instanceof Error) {
+        throw new Error(`Failed to resize terminal: ${error.message}`);
+      }
+      throw new Error('Failed to resize terminal: Unknown error');
     }
+  }
+
+  /**
+   * DEPRECATED: Use resize() instead
+   */
+  async resizeTerminal(
+    sessionId: string,
+    cols: number,
+    rows: number
+  ): Promise<void> {
+    return this.resize(sessionId, cols, rows);
   }
 
   /**

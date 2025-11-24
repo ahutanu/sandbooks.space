@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import { randomUUID } from 'crypto';
 import terminalSessionManager from '../services/terminalSessionManager';
 import {
   CreateSessionRequestSchema,
@@ -143,8 +144,51 @@ export const destroySession = async (
 };
 
 /**
+ * POST /api/terminal/:sessionId/input
+ * Send input to terminal session
+ */
+export const sendInput = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const { sessionId } = req.params;
+    const { data } = req.body;
+
+    if (!sessionId) {
+      throw new ValidationError('Session ID is required');
+    }
+
+    if (!data || typeof data !== 'string') {
+      throw new ValidationError('Input data is required and must be a string');
+    }
+
+    logger.debug('Sending input to terminal session', {
+      sessionId,
+      dataLength: data.length
+    });
+
+    await terminalSessionManager.sendInput(sessionId, data);
+
+    res.status(200).json({ status: 'sent' });
+
+  } catch (error) {
+    if (
+      error instanceof SessionNotFoundError ||
+      error instanceof SessionDestroyedError ||
+      error instanceof CommandExecutionError
+    ) {
+      next(error);
+    } else {
+      next(error);
+    }
+  }
+};
+
+/**
  * POST /api/terminal/:sessionId/execute
- * Execute a command in a terminal session
+ * DEPRECATED: Legacy endpoint for backward compatibility
  */
 export const executeCommand = async (
   req: Request,
@@ -158,7 +202,6 @@ export const executeCommand = async (
       throw new ValidationError('Session ID is required');
     }
 
-    // Validate request
     const parsed = ExecuteCommandRequestSchema.safeParse(req.body);
     if (!parsed.success) {
       throw new ValidationError(parsed.error.errors[0].message);
@@ -166,29 +209,18 @@ export const executeCommand = async (
 
     const request = parsed.data;
 
-    logger.info('Executing command in terminal session', {
+    logger.info('DEPRECATED: executeCommand called, redirecting to sendInput', {
       sessionId,
-      language: request.language,
       commandLength: request.command.length
     });
 
-    // Execute command (async, streams via SSE)
-    const { commandId } = await terminalSessionManager.executeCommand(
-      sessionId,
-      request
-    );
+    await terminalSessionManager.sendInput(sessionId, request.command + '\n');
 
-    // Prepare response
     const response: ExecuteCommandResponse = {
-      commandId,
+      commandId: randomUUID(),
       status: 'started',
-      message: 'Command execution started. Connect to SSE stream to receive output.'
+      message: 'Command sent to terminal'
     };
-
-    logger.info('Command execution started', {
-      sessionId,
-      commandId
-    });
 
     res.status(202).json(response);
 
@@ -289,7 +321,7 @@ export const streamOutput = async (
 
 /**
  * POST /api/terminal/:sessionId/resize
- * Resize terminal dimensions (optional - for future PTY support)
+ * Resize terminal dimensions
  */
 export const resizeTerminal = async (
   req: Request,
@@ -305,15 +337,25 @@ export const resizeTerminal = async (
     }
 
     if (!cols || !rows || cols < 20 || rows < 10) {
-      throw new ValidationError('Invalid terminal dimensions');
+      throw new ValidationError('Invalid terminal dimensions (minimum 20x10)');
     }
 
-    logger.debug('Terminal resize requested', { sessionId, cols, rows });
+    logger.debug('Resizing terminal', { sessionId, cols, rows });
 
-    res.status(200).json({ message: 'Resize acknowledged', cols, rows });
+    await terminalSessionManager.resize(sessionId, cols, rows);
+
+    res.status(200).json({ message: 'Terminal resized', cols, rows });
 
   } catch (error) {
-    next(error);
+    if (
+      error instanceof SessionNotFoundError ||
+      error instanceof SessionDestroyedError ||
+      error instanceof CommandExecutionError
+    ) {
+      next(error);
+    } else {
+      next(error);
+    }
   }
 };
 

@@ -1,14 +1,12 @@
 import { Response } from 'express';
 import { randomUUID } from 'crypto';
+import { WebSocket } from 'ws';
 import hopxService from './hopx.service';
 import logger from '../utils/logger';
 import {
   TerminalSession,
   SSEClient,
   SSEEvent,
-  CommandHistoryEntry,
-  ExecuteCommandRequest,
-  CommandOutput,
   CleanupResult,
   SessionStats,
   SessionNotFoundError,
@@ -38,8 +36,7 @@ class TerminalSessionManager {
   private sessions: Map<string, TerminalSession> = new Map();
   private sseClients: Map<string, SSEClient[]> = new Map(); // sessionId -> clients
   private sessionSandboxes: Map<string, { sandbox: HopxSandbox; sandboxId: string }> = new Map();
-  // Track working directory and env vars per session for state persistence
-  private sessionState: Map<string, { workingDir: string; env: Record<string, string> }> = new Map();
+  private sessionWebSockets: Map<string, WebSocket> = new Map();
   private cleanupTimer: NodeJS.Timeout | null = null;
   private heartbeatTimer: NodeJS.Timeout | null = null;
 
@@ -86,11 +83,59 @@ class TerminalSessionManager {
       this.sseClients.set(sessionId, []);
       this.sessionSandboxes.set(sessionId, { sandbox, sandboxId });
 
-      // Initialize session state with default working directory and env
-      this.sessionState.set(sessionId, {
-        workingDir: '/home',
-        env: {}
-      });
+      // Connect to WebSocket terminal
+      try {
+        await sandbox.init();
+        logger.debug('Sandbox initialized for terminal', { sessionId });
+
+        const ws = await sandbox.terminal.connect();
+        this.sessionWebSockets.set(sessionId, ws);
+
+        ws.on('message', (data) => {
+          try {
+            const message = JSON.parse(data.toString());
+            this.broadcastToSession(sessionId, {
+              type: 'terminal_message',
+              data: message
+            });
+          } catch (parseError) {
+            logger.error('Failed to parse terminal message', {
+              sessionId,
+              error: getErrorMessage(parseError)
+            });
+          }
+        });
+
+        ws.on('error', (error) => {
+          logger.error('Terminal WebSocket error', {
+            sessionId,
+            error: getErrorMessage(error)
+          });
+          this.broadcastToSession(sessionId, {
+            type: 'error',
+            data: { message: 'Terminal connection error', error: getErrorMessage(error) }
+          });
+        });
+
+        ws.on('close', () => {
+          logger.info('Terminal WebSocket closed', { sessionId });
+          this.sessionWebSockets.delete(sessionId);
+          this.broadcastToSession(sessionId, {
+            type: 'info',
+            data: { message: 'Terminal connection closed' }
+          });
+        });
+
+        logger.info('Terminal WebSocket connected', { sessionId });
+
+      } catch (wsError: unknown) {
+        logger.error('Failed to connect terminal WebSocket', {
+          sessionId,
+          error: getErrorMessage(wsError)
+        });
+        await hopxService.destroySandboxInstance(sandbox, sandboxId);
+        throw new CommandExecutionError(`Failed to connect terminal: ${getErrorMessage(wsError)}`);
+      }
 
       logger.info('Terminal session created', {
         sessionId,
@@ -161,13 +206,23 @@ class TerminalSessionManager {
         }
       }
 
+      // Close WebSocket
+      const ws = this.sessionWebSockets.get(sessionId);
+      if (ws) {
+        try {
+          ws.close();
+        } catch (_error) {
+          // Ignore errors on closing
+        }
+        this.sessionWebSockets.delete(sessionId);
+      }
+
       // Destroy dedicated sandbox for this session
       await this.destroySessionSandbox(sessionId);
 
       // Clean up
       this.sessions.delete(sessionId);
       this.sseClients.delete(sessionId);
-      this.sessionState.delete(sessionId); // Clean up session state (workingDir, env)
 
       logger.info('Terminal session destroyed', {
         sessionId,
@@ -234,201 +289,60 @@ class TerminalSessionManager {
   }
 
   // ============================================================================
-  // COMMAND EXECUTION
+  // TERMINAL INPUT/OUTPUT
   // ============================================================================
 
   /**
-   * Execute a command in a terminal session
-   * Streams output to all connected SSE clients
+   * Send input to terminal session (replaces executeCommand)
    */
-  async executeCommand(
-    sessionId: string,
-    request: ExecuteCommandRequest
-  ): Promise<{ commandId: string }> {
-    const session = this.getSession(sessionId);
-    const commandId = randomUUID();
-    const startTime = Date.now();
+  async sendInput(sessionId: string, data: string): Promise<void> {
+    this.getSession(sessionId);
+    const ws = this.sessionWebSockets.get(sessionId);
+
+    if (!ws) {
+      throw new CommandExecutionError('Terminal WebSocket not connected');
+    }
 
     this.updateSessionActivity(sessionId);
 
-    // Add to command history
-    const historyEntry: CommandHistoryEntry = {
-      commandId,
-      command: request.command,
-      timestamp: startTime
-    };
-    session.commandHistory.push(historyEntry);
+    const { sandbox } = this.getSessionSandbox(sessionId);
 
-    // Trim history if too long
-    if (session.commandHistory.length > CONFIG.MAX_COMMAND_HISTORY) {
-      session.commandHistory = session.commandHistory.slice(-CONFIG.MAX_COMMAND_HISTORY);
+    try {
+      sandbox.terminal.sendInput(ws, data);
+      logger.debug('Sent input to terminal', {
+        sessionId,
+        dataLength: data.length
+      });
+    } catch (error: unknown) {
+      logger.error('Failed to send input to terminal', {
+        sessionId,
+        error: getErrorMessage(error)
+      });
+      throw new CommandExecutionError(`Failed to send input: ${getErrorMessage(error)}`);
     }
-
-    logger.info('Executing terminal command', {
-      sessionId,
-      commandId,
-      language: request.language,
-      commandLength: request.command.length
-    });
-
-    // Execute asynchronously and stream results
-    this.executeCommandAsync(sessionId, commandId, request, historyEntry, startTime);
-
-    return { commandId };
   }
 
   /**
-   * Execute command asynchronously and stream output
-   * Hopx SDK v0.3.3+ properly supports workingDir and env options
+   * Resize terminal dimensions
    */
-  private async executeCommandAsync(
-    sessionId: string,
-    commandId: string,
-    request: ExecuteCommandRequest,
-    historyEntry: CommandHistoryEntry,
-    startTime: number
-  ): Promise<void> {
+  async resize(sessionId: string, cols: number, rows: number): Promise<void> {
+    const ws = this.sessionWebSockets.get(sessionId);
+
+    if (!ws) {
+      throw new CommandExecutionError('Terminal WebSocket not connected');
+    }
+
+    const { sandbox } = this.getSessionSandbox(sessionId);
+
     try {
-      const { sandbox, sandboxId } = this.getSessionSandbox(sessionId);
-      const state = this.sessionState.get(sessionId);
-
-      if (!state) {
-        throw new Error('Session state not found');
-      }
-
-      logger.info('Executing command', {
-        sessionId,
-        commandId,
-        sandboxId,
-        workingDir: state.workingDir,
-        envVars: Object.keys(state.env).length
-      });
-
-      // CRITICAL: Parse export commands and use sandbox.env.update() for global persistence
-      // This sets the env var globally in the sandbox, persisting across ALL commands
-      if (request.command.includes('export ')) {
-        const exportMatch = request.command.match(/export\s+(\w+)=(.+?)(?:;|$)/);
-        if (exportMatch) {
-          const [, varName, varValue] = exportMatch;
-          const cleanValue = varValue.trim().replace(/^['"]|['"]$/g, '');
-
-          // Update sandbox environment globally (persists across all commands!)
-          await sandbox.env.update({ [varName]: cleanValue });
-
-          // Also track in our state for visibility
-          state.env[varName] = cleanValue;
-
-          logger.info('✅ Set global env var', {
-            sessionId,
-            varName,
-            value: cleanValue.substring(0, 50)
-          });
-        }
-      }
-
-      // Execute command with working directory (workingDir works in v0.3.3+)
-      // Note: env vars are set globally via sandbox.env.update(), not passed per-command
-      const timeoutMs = request.timeout ?? 30000; // Default 30s if not provided
-      const timeoutSeconds = Math.max(Math.ceil(timeoutMs / 1000), 1);
-      const result = await sandbox.commands.run(request.command, {
-        timeoutSeconds,
-        workingDir: state.workingDir
-      });
-
-      const executionTime = Date.now() - startTime;
-
-      // Update state if cd command
-      if (request.command.trim().startsWith('cd ')) {
-        try {
-          // Execute cd then pwd to get new directory
-          const cdPwd = await sandbox.commands.run(`${request.command.trim()} && pwd`, {
-            timeoutSeconds: 5,
-            workingDir: state.workingDir
-            // env option doesn't work - not needed for pwd anyway
-          });
-
-          if (cdPwd.exit_code === 0 && cdPwd.stdout) {
-            const newDir = cdPwd.stdout.trim();
-            state.workingDir = newDir;
-            logger.info('Updated working directory', {
-              sessionId,
-              workingDir: state.workingDir
-            });
-          } else {
-            logger.warn('cd command failed', {
-              sessionId,
-              exitCode: cdPwd.exit_code,
-              stderr: cdPwd.stderr,
-              keepingWorkingDir: state.workingDir
-            });
-          }
-        } catch (pwdError: unknown) {
-          logger.error('Error getting working directory after cd', {
-            sessionId,
-            error: getErrorMessage(pwdError)
-          });
-        }
-      }
-
-      // Update history
-      historyEntry.exitCode = result.exit_code || 0;
-      historyEntry.duration = executionTime;
-
-      // Prepare output
-      const output: CommandOutput = {
-        commandId,
-        stdout: result.stdout || '',
-        stderr: result.stderr || '',
-        exitCode: result.exit_code || 0,
-        executionTime,
-        error: result.exit_code !== 0 ? result.stderr : undefined
-      };
-
-      // Broadcast output to all clients
-      await this.broadcastToSession(sessionId, {
-        type: 'output',
-        data: output
-      });
-
-      // Send completion event
-      await this.broadcastToSession(sessionId, {
-        type: 'complete',
-        data: { commandId, exitCode: result.exit_code || 0, executionTime }
-      });
-
-      logger.info('Command executed successfully', {
-        sessionId,
-        commandId,
-        sandboxId,
-        exitCode: result.exit_code || 0,
-        executionTime,
-        workingDir: state.workingDir
-      });
-
+      sandbox.terminal.resize(ws, cols, rows);
+      logger.debug('Terminal resized', { sessionId, cols, rows });
     } catch (error: unknown) {
-      const executionTime = Date.now() - startTime;
-      const message = getErrorMessage(error);
-
-      logger.error('Command execution failed', {
+      logger.error('Failed to resize terminal', {
         sessionId,
-        commandId,
-        error: message,
-        executionTime
+        error: getErrorMessage(error)
       });
-
-      // Update history
-      historyEntry.exitCode = 1;
-      historyEntry.duration = executionTime;
-
-      // Broadcast error
-      await this.broadcastToSession(sessionId, {
-        type: 'error',
-        data: {
-          commandId,
-          error: message,
-          executionTime
-        }
-      });
+      throw new CommandExecutionError(`Failed to resize: ${getErrorMessage(error)}`);
     }
   }
 

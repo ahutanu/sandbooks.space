@@ -58,7 +58,9 @@ export type SSEEventType =
   | 'error'
   | 'complete'
   | 'heartbeat'
-  | 'session_destroyed';
+  | 'session_destroyed'
+  | 'terminal_message'
+  | 'info';
 
 /**
  * SSE event data

@@ -1,3 +1,5 @@
+import { WebSocket } from 'ws';
+
 export interface HopxCommandResult {
   stdout?: string;
   stderr?: string;
@@ -32,6 +34,7 @@ export interface HopxSandboxInfo {
 
 export interface HopxSandbox {
   sandboxId: string;
+  init: () => Promise<void>;
   runCode: (code: string, opts: { language: string }) => Promise<HopxCommandResult>;
   getHealth: () => Promise<HopxHealth>;
   getAgentMetrics: () => Promise<HopxMetrics>;
@@ -42,5 +45,10 @@ export interface HopxSandbox {
   };
   commands: {
     run: (command: string, opts?: { timeoutSeconds?: number; workingDir?: string }) => Promise<HopxCommandResult>;
+  };
+  terminal: {
+    connect: () => Promise<WebSocket>;
+    sendInput: (ws: WebSocket, data: string) => void;
+    resize: (ws: WebSocket, cols: number, rows: number) => void;
   };
 }

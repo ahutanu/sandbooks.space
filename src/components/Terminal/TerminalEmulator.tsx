@@ -446,6 +446,7 @@ export function TerminalEmulator({
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
     const connect = () => {
+      console.log('[TerminalEmulator] connect() called', { sessionId, provider: provider?.name, mode: provider?.mode });
       // Cleanup previous
       if (stream) {
         if (stream instanceof WebSocket) {
@@ -458,10 +459,13 @@ export function TerminalEmulator({
         provider.disconnectStream(stream);
       }
 
+      console.log('[TerminalEmulator] Calling provider.connectStream...');
       stream = provider.connectStream(sessionId);
       streamRef.current = stream;
+      console.log('[TerminalEmulator] connectStream returned:', stream ? stream.constructor.name : 'null');
 
       if (!stream) {
+        console.error('[TerminalEmulator] No stream returned from provider');
         onErrorRef.current('Failed to connect to terminal stream');
         return;
       }
@@ -479,6 +483,16 @@ export function TerminalEmulator({
             ensurePrompt();
             onStatusChangeRef.current('connected');
             onSessionInfoRef.current?.({ provider: 'cloud' });
+          }
+        });
+
+        stream.addEventListener('terminal_message', (e: MessageEvent) => {
+          const message = JSON.parse(e.data);
+          const terminal = xtermRef.current;
+          if (terminal && isOpenedRef.current) {
+            if (message.type === 'output' && message.data) {
+              terminal.write(message.data);
+            }
           }
         });
 
@@ -562,9 +576,11 @@ export function TerminalEmulator({
       }
     };
 
+    console.log('[TerminalEmulator] useEffect about to call connect()', { sessionId });
     connect();
 
     return () => {
+      console.log('[TerminalEmulator] useEffect cleanup', { sessionId });
       if (reconnectTimer) clearTimeout(reconnectTimer);
       if (stream) {
         if (stream instanceof WebSocket) {

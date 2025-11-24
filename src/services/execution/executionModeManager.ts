@@ -2,6 +2,7 @@ import type { ExecutionProviderInterface } from './types';
 import type { TerminalProviderInterface } from '../terminal/types';
 import { cloudExecutionProvider } from './cloudProvider';
 import { localExecutionProvider } from './localProvider';
+import { cloudTerminalProvider } from '../terminal/cloudTerminalProvider';
 import { isLocalExecutionSupported } from '../../utils/platform';
 import type { ExecutionMode } from '../../types';
 
@@ -12,7 +13,7 @@ import type { ExecutionMode } from '../../types';
  */
 export class ExecutionModeManager {
   private executionProvider: ExecutionProviderInterface = cloudExecutionProvider;
-  private terminalProvider: TerminalProviderInterface | null = null;
+  private terminalProvider: TerminalProviderInterface = cloudTerminalProvider;
   private currentMode: ExecutionMode = 'cloud';
 
   /**
@@ -25,10 +26,12 @@ export class ExecutionModeManager {
         throw new Error('Local execution is not available on this platform');
       }
       this.executionProvider = localExecutionProvider;
+      this.terminalProvider = cloudTerminalProvider; // Use cloud terminal for now
     } else {
       this.executionProvider = cloudExecutionProvider;
+      this.terminalProvider = cloudTerminalProvider;
     }
-    
+
     this.currentMode = mode;
   }
 

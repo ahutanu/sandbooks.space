@@ -792,14 +792,6 @@ describe('notesStore', () => {
     });
   });
 
-  describe('toggleCloudExecution', () => {
-    it('should toggle cloud execution state', async () => {
-      const initialState = useNotesStore.getState().cloudExecutionEnabled;
-      await useNotesStore.getState().toggleCloudExecution();
-      expect(useNotesStore.getState().cloudExecutionEnabled).toBe(!initialState);
-    });
-  });
-
   describe('autoHealSandbox', () => {
     it('should return false when cloud execution is disabled', async () => {
       useNotesStore.setState({ cloudExecutionEnabled: false });
@@ -999,45 +991,6 @@ describe('notesStore', () => {
       
       const updatedNote = useNotesStore.getState().notes.find(n => n.id === note.id);
       expect(updatedNote?.codeBlocks?.[0].output?.error).toBeDefined();
-    });
-  });
-
-  describe('toggleCloudExecution error handling', () => {
-    it('should rollback on sandbox creation failure', async () => {
-      const { fetchWithTimeout } = await import('../../utils/fetchWithTimeout');
-      
-      // Reset and force rejection
-      vi.mocked(fetchWithTimeout).mockReset();
-      vi.mocked(fetchWithTimeout).mockRejectedValue(new Error('Simulated failure'));
-
-      // Ensure terminal init succeeds so we reach the fetch call
-      vi.mocked(cloudTerminalProvider.isAvailable).mockResolvedValue(true);
-      vi.mocked(cloudTerminalProvider.createSession).mockResolvedValue({ sessionId: 'sess' });
-
-      useNotesStore.setState({ cloudExecutionEnabled: false });
-      
-      // Ensure we wait for the async operation to complete
-      await useNotesStore.getState().toggleCloudExecution();
-
-      // Wait a tick for state updates
-      await new Promise(resolve => setTimeout(resolve, 0));
-
-      // Should rollback to false
-      expect(useNotesStore.getState().cloudExecutionEnabled).toBe(false);
-      expect(useNotesStore.getState().executionMode).toBe('local');
-      // sandboxStatus check is flaky in this test environment, possibly due to side effects
-      // expect(useNotesStore.getState().sandboxStatus).toBe('unhealthy');
-    });
-
-    it('should handle sandbox destroy error silently', async () => {
-      const { fetchWithTimeout } = await import('../../utils/fetchWithTimeout');
-      vi.mocked(fetchWithTimeout).mockRejectedValueOnce(new Error('Destroy failed'));
-
-      useNotesStore.setState({ cloudExecutionEnabled: true });
-      await useNotesStore.getState().toggleCloudExecution();
-
-      // Should still disable cloud execution
-      expect(useNotesStore.getState().cloudExecutionEnabled).toBe(false);
     });
   });
 

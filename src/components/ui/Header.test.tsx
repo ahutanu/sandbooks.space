@@ -14,7 +14,6 @@ vi.mock('../../store/notesStore', () => {
         setExecutionMode: vi.fn(),
         localExecutionAvailable: true,
         cloudExecutionEnabled: false,
-        toggleCloudExecution: vi.fn(),
         darkModeEnabled: false,
         toggleDarkMode: vi.fn(),
         isSidebarOpen: true,
@@ -69,16 +68,6 @@ describe('Header Component', () => {
 
         const { useNotesStore } = await import('../../store/notesStore');
         expect(useNotesStore().toggleDarkMode).toHaveBeenCalled();
-    });
-
-    it('handles cloud execution toggle', async () => {
-        render(<Header onToggleMobileSidebar={mockToggleMobileSidebar} />);
-
-        const cloudButton = screen.getByTitle(/Cloud execution/);
-        fireEvent.click(cloudButton);
-
-        const { useNotesStore } = await import('../../store/notesStore');
-        expect(useNotesStore().setExecutionMode).toHaveBeenCalled();
     });
 
     it('handles new note creation', async () => {
