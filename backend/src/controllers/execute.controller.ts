@@ -9,11 +9,11 @@ export const executeCode = async (
   next: NextFunction
 ) => {
   try {
-    const { code, language } = req.body as ExecuteRequest;
+    const { code, language, timeout } = req.body as ExecuteRequest;
 
-    logger.info('Received execution request', { language });
+    logger.info('Received execution request', { language, timeout: timeout ?? 'default' });
 
-    const result = await hopxService.executeCode(code, language);
+    const result = await hopxService.executeCode(code, language, { timeout });
 
     // Include sandbox status in response
     res.status(200).json({

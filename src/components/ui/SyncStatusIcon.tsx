@@ -190,22 +190,21 @@ export const SyncStatusIcon = () => {
 
                     <div className="h-px bg-stone-200 dark:bg-stone-800 my-3" />
 
-                    <div className="space-y-1">
-                        <Button
-                            variant="ghost"
-                            size="sm"
+                    <div className="space-y-0.5">
+                        {/* Export Notes */}
+                        <button
                             onClick={() => { handleExport(); setIsOpen(false); }}
                             disabled={notes.length === 0}
-                            className="w-full justify-start gap-3 px-2"
+                            className="w-full flex items-center gap-3 px-3 py-2 text-left text-sm text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800 hover:text-stone-900 dark:hover:text-stone-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors rounded-lg"
                         >
-                            <LuDownload className="w-4 h-4 shrink-0 text-stone-500 dark:text-stone-400" />
+                            <LuDownload className="w-4 h-4 shrink-0" />
                             <span>Export Notes</span>
-                        </Button>
+                        </button>
 
                         {/* Import from JSON */}
-                        <label className="w-full flex items-center gap-3 px-2 py-2 text-left text-sm text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800 hover:text-stone-900 dark:hover:text-stone-200 transition-all duration-200 rounded-lg cursor-pointer">
+                        <label className="w-full flex items-center gap-3 px-3 py-2 text-left text-sm text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800 hover:text-stone-900 dark:hover:text-stone-200 transition-colors rounded-lg cursor-pointer">
                             <LuUpload className="w-4 h-4 shrink-0" />
-                            <span className="flex-1 font-medium">Import from JSON</span>
+                            <span>Import from JSON</span>
                             <input
                                 ref={fileInputRef}
                                 type="file"
@@ -216,9 +215,9 @@ export const SyncStatusIcon = () => {
                         </label>
 
                         {/* Import Jupyter Notebook */}
-                        <label className="w-full flex items-center gap-3 px-2 py-2 text-left text-sm text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800 hover:text-stone-900 dark:hover:text-stone-200 transition-all duration-200 rounded-lg cursor-pointer">
+                        <label className="w-full flex items-center gap-3 px-3 py-2 text-left text-sm text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800 hover:text-stone-900 dark:hover:text-stone-200 transition-colors rounded-lg cursor-pointer">
                             <LuFileCode className="w-4 h-4 shrink-0" />
-                            <span className="flex-1 font-medium">Import Jupyter Notebook</span>
+                            <span>Import Jupyter Notebook</span>
                             <input
                                 ref={notebookInputRef}
                                 type="file"
@@ -230,10 +229,8 @@ export const SyncStatusIcon = () => {
 
                         <div className="h-px bg-stone-200 dark:bg-stone-800 my-2" />
 
-                        {/* Markdown Actions */}
-                        <Button
-                            variant="ghost"
-                            size="sm"
+                        {/* Export Current as Markdown */}
+                        <button
                             onClick={() => {
                                 const activeNote = notes.find(n => n.id === useNotesStore.getState().activeNoteId);
                                 if (activeNote) {
@@ -254,15 +251,16 @@ export const SyncStatusIcon = () => {
                                 }
                             }}
                             disabled={!useNotesStore.getState().activeNoteId}
-                            className="w-full justify-start gap-3 px-2"
+                            className="w-full flex items-center gap-3 px-3 py-2 text-left text-sm text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800 hover:text-stone-900 dark:hover:text-stone-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors rounded-lg"
                         >
-                            <LuFileText className="w-4 h-4 shrink-0 text-stone-500 dark:text-stone-400" />
+                            <LuFileText className="w-4 h-4 shrink-0" />
                             <span>Export Current (Markdown)</span>
-                        </Button>
+                        </button>
 
-                        <label className="w-full flex items-center gap-3 px-2 py-2 text-left text-sm text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800 hover:text-stone-900 dark:hover:text-stone-200 transition-all duration-200 rounded-lg cursor-pointer">
+                        {/* Import Markdown */}
+                        <label className="w-full flex items-center gap-3 px-3 py-2 text-left text-sm text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800 hover:text-stone-900 dark:hover:text-stone-200 transition-colors rounded-lg cursor-pointer">
                             <LuFileJson className="w-4 h-4 shrink-0" />
-                            <span className="flex-1 font-medium">Import Markdown</span>
+                            <span>Import Markdown</span>
                             <input
                                 type="file"
                                 accept=".md,.markdown,.txt"
@@ -281,9 +279,8 @@ export const SyncStatusIcon = () => {
 
                         <div className="h-px bg-stone-200 dark:bg-stone-800 my-2" />
 
-                        <div className="px-1">
-                            <FileSystemSync />
-                        </div>
+                        {/* File System Sync */}
+                        <FileSystemSync />
                     </div>
                 </div>
             }

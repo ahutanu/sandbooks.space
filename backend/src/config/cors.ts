@@ -30,7 +30,9 @@ export const corsOptions: cors.CorsOptions = {
     'Content-Type',
     'Authorization',
     'x-sandbooks-token',
-    'X-Requested-With'
+    'X-Requested-With',
+    'x-device-id',
+    'x-github-token',
   ],
   maxAge: 86400,
   optionsSuccessStatus: 204,

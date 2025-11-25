@@ -42,7 +42,7 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "@hopx-ai/sdk": "^0.3.3",
+    "@hopx-ai/sdk": "^0.3.4",
     "@types/ws": "^8.18.1",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",

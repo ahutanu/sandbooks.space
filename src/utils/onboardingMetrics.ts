@@ -14,7 +14,11 @@ export type OnboardingEvent =
   | 'docs_reset'
   | 'docs_updated'
   | 'payload_link_opened'
-  | 'payload_note_saved';
+  | 'payload_note_saved'
+  | 'github_connected'
+  | 'github_pushed'
+  | 'github_pulled'
+  | 'github_sync_resolved';
 
 export interface OnboardingEventRecord {
   event: OnboardingEvent;

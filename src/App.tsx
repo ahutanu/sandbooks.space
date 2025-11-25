@@ -7,6 +7,7 @@ import { EditorModeIndicator } from './components/ui/EditorModeIndicator';
 import { AnalyticsConsent } from './components/ui/AnalyticsConsent';
 import { DocsUpdateNotification } from './components/ui/DocsUpdateNotification';
 import { PayloadViewerBanner, PayloadLoading, PayloadError, ShareModal } from './components/Share';
+import { RepoSelector, SyncConflictModal } from './components/GitHub';
 import { isCurrentUrlPayload } from './utils/payload';
 import type { JSONContent } from '@tiptap/react';
 
@@ -209,6 +210,9 @@ function App() {
           onClose={() => setShareModalOpen(false)}
         />
       )}
+      {/* GitHub sync modals */}
+      <RepoSelector />
+      <SyncConflictModal />
       {/* Two-pane layout: Sidebar + Editor (industry-standard flex pattern) */}
       <div className="flex-1 flex overflow-hidden bg-white dark:bg-stone-900">
         {/* Desktop sidebar - independently scrollable */}

@@ -64,6 +64,9 @@ jobs:
           HOPX_API_KEY: ${{ secrets.HOPX_API_KEY }}
           API_ACCESS_TOKEN: ${{ secrets.API_ACCESS_TOKEN }}
           GOOGLE_TAG_MANAGER_TAG: ${{ secrets.GOOGLE_TAG_MANAGER_TAG }}
+          GITHUB_CLIENT_ID: ${{ secrets.GH_OAUTH_CLIENT_ID }}
+          GITHUB_CLIENT_SECRET: ${{ secrets.GH_OAUTH_CLIENT_SECRET }}
+          GITHUB_OAUTH_CALLBACK_URL: https://sandbooks.space/github/callback
           RESOURCE_GROUP: ${{ env.RESOURCE_GROUP }}
           AZ_LOCATION: ${{ env.AZ_LOCATION }}
           BACKEND_NAME: ${{ env.BACKEND_NAME }}

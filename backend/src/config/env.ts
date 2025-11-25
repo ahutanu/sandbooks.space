@@ -11,8 +11,12 @@ const EnvSchema = z.object({
   API_ACCESS_TOKEN: z.string().optional(),
   RATE_LIMIT_WINDOW_MS: z.string().regex(/^\d+$/).transform(Number).default('60000'),
   RATE_LIMIT_MAX_REQUESTS: z.string().regex(/^\d+$/).transform(Number).default('1000'),
-  MAX_EXECUTION_TIMEOUT: z.string().regex(/^\d+$/).transform(Number).default('30'),
+  MAX_EXECUTION_TIMEOUT: z.string().regex(/^\d+$/).transform(Number).default('360'), // 6 minutes for pip install
   LOG_LEVEL: z.enum(['error', 'warn', 'info', 'debug']).default('info'),
+  // GitHub OAuth App (optional - for GitHub sync feature)
+  GITHUB_CLIENT_ID: z.string().optional(),
+  GITHUB_CLIENT_SECRET: z.string().optional(),
+  GITHUB_OAUTH_CALLBACK_URL: z.string().url().optional().default('http://localhost:5173/github/callback'),
 });
 
 export type Env = z.infer<typeof EnvSchema>;

@@ -4,6 +4,7 @@ import { Logo } from './Logo';
 import { SyncStatusIcon } from './SyncStatusIcon';
 import { Button } from './Button';
 import { Tooltip } from './Tooltip';
+import { GitHubConnect } from '../GitHub';
 import { LuMenu, LuPanelLeftClose, LuPanelLeftOpen, LuMoon, LuSun, LuTerminal, LuPlus, LuShare2 } from 'react-icons/lu';
 
 
@@ -94,6 +95,8 @@ export const Header = ({ onToggleMobileSidebar }: HeaderProps) => {
             )}
           </Button>
         </Tooltip>
+
+        <GitHubConnect />
 
         <Tooltip content={isTerminalOpen ? "Close terminal" : "Terminal"} shortcut="⌘`">
           <Button

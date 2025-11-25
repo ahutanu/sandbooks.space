@@ -1,5 +1,6 @@
 import type { JSONContent } from '@tiptap/react';
 import type { Tag } from './tags.types';
+import type { GitHubStatus, GitHubUser, SyncConflictStrategy } from './github.types';
 // Terminal types removed - using global session state instead
 
 export interface CodeBlock {
@@ -189,4 +190,22 @@ export interface NotesStore {
   checkDocsVersion: () => void;
   updateSystemDocs: () => void;
   dismissDocsUpdate: () => void;
+  // GitHub sync state
+  gitHubStatus: GitHubStatus;
+  gitHubUser: GitHubUser | null;
+  gitHubError: string | null;
+  gitHubRepo: string | null;
+  gitHubPath: string;
+  gitHubLastSync: string | null;
+  isRepoSelectorOpen: boolean;
+  isSyncConflictModalOpen: boolean;
+  // GitHub sync methods
+  connectGitHub: () => Promise<void>;
+  disconnectGitHub: () => Promise<void>;
+  setRepoSelectorOpen: (open: boolean) => void;
+  selectGitHubRepo: (repo: string, createIfMissing?: boolean) => Promise<void>;
+  pushToGitHub: (message?: string) => Promise<void>;
+  pullFromGitHub: () => Promise<void>;
+  setSyncConflictModalOpen: (open: boolean) => void;
+  resolveInitialSyncConflict: (strategy: SyncConflictStrategy) => Promise<void>;
 }

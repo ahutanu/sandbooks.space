@@ -20,6 +20,8 @@ import {
   PayloadDecodeError,
   getDecodeErrorMessage,
 } from '../utils/payload';
+import { gitHubService } from '../services/github';
+import type { GitHubStatus } from '../types/github.types';
 
 // Initialize dark mode from localStorage or system preference
 const initDarkMode = (): boolean => {
@@ -106,6 +108,15 @@ export const useNotesStore = create<NotesStore>((set, get) => ({
   // Docs version state
   docsUpdateAvailable: false,
   currentDocsVersion: null,
+  // GitHub sync state
+  gitHubStatus: (gitHubService.isConnected() ? 'connected' : 'disconnected') as GitHubStatus,
+  gitHubUser: gitHubService.getStoredUser(),
+  gitHubError: null,
+  gitHubRepo: gitHubService.getStoredRepo(),
+  gitHubPath: gitHubService.getStoredPath(),
+  gitHubLastSync: gitHubService.getLastSync(),
+  isRepoSelectorOpen: false,
+  isSyncConflictModalOpen: false,
 
   addNote: (note: Note) => {
     set((state) => {
@@ -944,6 +955,221 @@ export const useNotesStore = create<NotesStore>((set, get) => ({
     // User chose to keep old docs - store dismissed version to avoid re-prompting
     localStorage.setItem('sandbooks-docs-update-dismissed', String(DOCS_VERSION));
     set({ docsUpdateAvailable: false });
+  },
+
+  // ============================================================================
+  // GitHub Sync Methods
+  // ============================================================================
+
+  connectGitHub: async () => {
+    set({ gitHubStatus: 'connecting', gitHubError: null });
+    try {
+      const { user } = await gitHubService.startOAuthFlow();
+      set({
+        gitHubStatus: 'connected',
+        gitHubUser: user,
+        gitHubError: null,
+      });
+      toast.success(`Connected to GitHub as ${user.login}`);
+      recordOnboardingEvent('github_connected');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to connect to GitHub';
+      set({ gitHubStatus: 'error', gitHubError: message });
+      toast.error(message);
+    }
+  },
+
+  disconnectGitHub: async () => {
+    try {
+      await gitHubService.disconnect();
+    } catch {
+      // Ignore errors - we'll clear state anyway
+    }
+    set({
+      gitHubStatus: 'disconnected',
+      gitHubUser: null,
+      gitHubRepo: null,
+      gitHubLastSync: null,
+      gitHubError: null,
+    });
+    toast.success('Disconnected from GitHub');
+  },
+
+  setRepoSelectorOpen: (open: boolean) => {
+    set({ isRepoSelectorOpen: open });
+  },
+
+  selectGitHubRepo: async (repo: string, createIfMissing = false) => {
+    const state = get();
+    if (state.gitHubStatus !== 'connected') {
+      toast.error('Not connected to GitHub');
+      return;
+    }
+
+    try {
+      await gitHubService.selectRepo(repo, state.gitHubPath, createIfMissing);
+      set({
+        gitHubRepo: repo,
+        isRepoSelectorOpen: false,
+      });
+      toast.success(`Connected to ${repo}`);
+
+      // Check if there are notes in the repo
+      const remoteResult = await gitHubService.pull();
+      const localNotes = state.notes;
+
+      // If both local and remote have notes, show conflict modal
+      if (remoteResult.notes.length > 0 && localNotes.length > 0) {
+        set({ isSyncConflictModalOpen: true });
+      } else if (remoteResult.notes.length > 0) {
+        // Only remote has notes - import them
+        await get().resolveInitialSyncConflict('github');
+      } else if (localNotes.length > 0) {
+        // Only local has notes - push them
+        await get().resolveInitialSyncConflict('local');
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to select repository';
+      toast.error(message);
+    }
+  },
+
+  pushToGitHub: async (message?: string) => {
+    const state = get();
+    if (state.gitHubStatus !== 'connected' || !state.gitHubRepo) {
+      toast.error('Not connected to GitHub or no repository selected');
+      return;
+    }
+
+    set({ gitHubStatus: 'syncing' });
+    try {
+      const result = await gitHubService.push(state.notes, message);
+      set({
+        gitHubStatus: 'connected',
+        gitHubLastSync: result.syncedAt,
+      });
+      toast.success(`Pushed ${(result.filesCreated ?? 0) + (result.filesUpdated ?? 0)} notes to GitHub`);
+      recordOnboardingEvent('github_pushed');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to push to GitHub';
+      set({ gitHubStatus: 'error', gitHubError: message });
+      toast.error(message);
+    }
+  },
+
+  pullFromGitHub: async () => {
+    const state = get();
+    if (state.gitHubStatus !== 'connected' || !state.gitHubRepo) {
+      toast.error('Not connected to GitHub or no repository selected');
+      return;
+    }
+
+    set({ gitHubStatus: 'syncing' });
+    try {
+      const result = await gitHubService.pull();
+
+      // Merge pulled notes with existing notes
+      const existingIds = new Set(state.notes.map(n => n.id));
+      const newNotes: Note[] = [];
+      const updatedNotes: Note[] = [];
+
+      for (const remoteNote of result.notes) {
+        if (existingIds.has(remoteNote.id)) {
+          // Update existing note
+          updatedNotes.push(remoteNote as Note);
+        } else {
+          // Add new note
+          newNotes.push(remoteNote as Note);
+        }
+      }
+
+      // Apply updates
+      const mergedNotes = state.notes.map(note => {
+        const updated = updatedNotes.find(u => u.id === note.id);
+        return updated || note;
+      });
+
+      // Add new notes
+      const allNotes = [...mergedNotes, ...newNotes];
+
+      set({
+        notes: allNotes,
+        tags: deriveTagsFromNotes(allNotes),
+        gitHubStatus: 'connected',
+        gitHubLastSync: result.syncedAt,
+      });
+
+      // Save to local storage
+      await storageManager.saveAllNotes(allNotes);
+
+      toast.success(`Pulled ${result.notes.length} notes from GitHub`);
+      recordOnboardingEvent('github_pulled');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to pull from GitHub';
+      set({ gitHubStatus: 'error', gitHubError: message });
+      toast.error(message);
+    }
+  },
+
+  setSyncConflictModalOpen: (open: boolean) => {
+    set({ isSyncConflictModalOpen: open });
+  },
+
+  resolveInitialSyncConflict: async (strategy) => {
+    const state = get();
+    set({ isSyncConflictModalOpen: false, gitHubStatus: 'syncing' });
+
+    try {
+      if (strategy === 'github') {
+        // Replace local with GitHub
+        const result = await gitHubService.pull();
+        const remoteNotes = result.notes as Note[];
+
+        set({
+          notes: remoteNotes,
+          tags: deriveTagsFromNotes(remoteNotes),
+          gitHubStatus: 'connected',
+          gitHubLastSync: result.syncedAt,
+        });
+        await storageManager.saveAllNotes(remoteNotes);
+        toast.success('Notes replaced with GitHub version');
+      } else if (strategy === 'local') {
+        // Push local to GitHub
+        const result = await gitHubService.push(state.notes);
+        set({
+          gitHubStatus: 'connected',
+          gitHubLastSync: result.syncedAt,
+        });
+        toast.success('Pushed local notes to GitHub');
+      } else if (strategy === 'merge') {
+        // Merge both - pull first, then push
+        const pullResult = await gitHubService.pull();
+        const remoteNotes = pullResult.notes as Note[];
+
+        // Merge: keep all local notes, add remote notes that don't exist locally
+        const localIds = new Set(state.notes.map(n => n.id));
+        const newRemoteNotes = remoteNotes.filter(n => !localIds.has(n.id));
+        const mergedNotes = [...state.notes, ...newRemoteNotes];
+
+        // Push merged notes
+        const pushResult = await gitHubService.push(mergedNotes);
+
+        set({
+          notes: mergedNotes,
+          tags: deriveTagsFromNotes(mergedNotes),
+          gitHubStatus: 'connected',
+          gitHubLastSync: pushResult.syncedAt,
+        });
+        await storageManager.saveAllNotes(mergedNotes);
+        toast.success(`Merged notes: ${newRemoteNotes.length} from GitHub + ${state.notes.length} local`);
+      }
+
+      recordOnboardingEvent('github_sync_resolved');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to resolve sync conflict';
+      set({ gitHubStatus: 'error', gitHubError: message });
+      toast.error(message);
+    }
   },
 }));
 

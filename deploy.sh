@@ -36,6 +36,11 @@ GOOGLE_TAG_MANAGER_TAG="${GOOGLE_TAG_MANAGER_TAG:-}"
 RATE_LIMIT_WINDOW_MS="${RATE_LIMIT_WINDOW_MS:-600000}"
 RATE_LIMIT_MAX_REQUESTS="${RATE_LIMIT_MAX_REQUESTS:-5000}"
 
+# GitHub OAuth (for sync feature)
+GITHUB_CLIENT_ID="${GITHUB_CLIENT_ID:-}"
+GITHUB_CLIENT_SECRET="${GITHUB_CLIENT_SECRET:-}"
+GITHUB_OAUTH_CALLBACK_URL="${GITHUB_OAUTH_CALLBACK_URL:-https://sandbooks.space/github/callback}"
+
 # ----------------------------------------------------------------------------------------------
 # Pre-flight checks
 # ----------------------------------------------------------------------------------------------
@@ -116,6 +121,11 @@ BACKEND_SETTINGS=(
 )
 if [ -n "$API_ACCESS_TOKEN" ]; then
   BACKEND_SETTINGS+=("API_ACCESS_TOKEN=$API_ACCESS_TOKEN")
+fi
+if [ -n "$GITHUB_CLIENT_ID" ]; then
+  BACKEND_SETTINGS+=("GITHUB_CLIENT_ID=$GITHUB_CLIENT_ID")
+  BACKEND_SETTINGS+=("GITHUB_CLIENT_SECRET=$GITHUB_CLIENT_SECRET")
+  BACKEND_SETTINGS+=("GITHUB_OAUTH_CALLBACK_URL=$GITHUB_OAUTH_CALLBACK_URL")
 fi
 az webapp config appsettings set \
   --name "$BACKEND_NAME" \
