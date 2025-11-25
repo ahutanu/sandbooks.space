@@ -42,9 +42,10 @@ import { Markdown } from '@tiptap/markdown';
 import { useTypewriterMode } from '../../hooks/useTypewriterMode';
 import { useCounterOverlapOffset } from '../../hooks/useCounterOverlapOffset';
 import { useNotesStore } from '../../store/notesStore';
+import { sanitizeContent } from '../../utils/contentSanitizer';
 import type { Note } from '../../types';
 import type { JSONContent } from '@tiptap/core';
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { LinkPopover } from './LinkPopover';
 import { BubbleMenu } from './BubbleMenu';
 import { FloatingMenu } from './FloatingMenu';
@@ -65,6 +66,10 @@ export const Editor = ({ note, onUpdate, readOnly = false }: EditorProps) => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const tagsBarRef = useRef<HTMLDivElement>(null);
   const counterRef = useRef<HTMLDivElement>(null);
+
+  // Sanitize content to remove empty text nodes that cause ProseMirror errors
+  // This is a last-resort fallback - storage providers should sanitize on load
+  const sanitizedContent = useMemo(() => sanitizeContent(note.content), [note.content]);
 
   const editor = useEditor({
     extensions: [
@@ -183,7 +188,7 @@ export const Editor = ({ note, onUpdate, readOnly = false }: EditorProps) => {
       }),
       Markdown, // Official Tiptap v3 markdown support
     ],
-    content: note.content,
+    content: sanitizedContent,
     editable: !readOnly,
     onUpdate: ({ editor }) => {
       if (!readOnly) {
@@ -200,16 +205,15 @@ export const Editor = ({ note, onUpdate, readOnly = false }: EditorProps) => {
 
   // Update editor content when note changes
   useEffect(() => {
-    if (editor && note.content) {
+    if (editor && sanitizedContent) {
       const currentContent = editor.getJSON();
-      const newContent = note.content;
 
       // Only update if content actually changed to avoid cursor jumping (optimized with fast-deep-equal)
-      if (!equal(currentContent, newContent)) {
-        editor.commands.setContent(newContent);
+      if (!equal(currentContent, sanitizedContent)) {
+        editor.commands.setContent(sanitizedContent);
       }
     }
-  }, [editor, note.id, note.content]); // Re-run when note changes OR editor instance changes
+  }, [editor, note.id, sanitizedContent]); // Re-run when note changes OR editor instance changes
 
   // Reset scroll position when switching notes
   // This prevents stale scroll positions from persisting across note changes

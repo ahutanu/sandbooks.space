@@ -1,6 +1,9 @@
 import type { JSONContent } from '@tiptap/react';
 import type { Tag } from './tags.types';
 import type { GitHubStatus, GitHubUser, SyncConflictStrategy } from './github.types';
+import type { Folder, FolderTreeNode } from './folder.types';
+
+export type * from './folder.types';
 // Terminal types removed - using global session state instead
 
 export interface CodeBlock {
@@ -34,6 +37,9 @@ export interface Note {
    * Optional for backward compatibility - existing notes will be identified by title.
    */
   isSystemDoc?: boolean;
+  // Folder fields (optional for backward compatibility)
+  folderId?: string | null; // Primary folder (null/undefined = root/unfiled)
+  folderOrder?: number; // Sort order within folder
 }
 
 export interface ExecutionResult {
@@ -111,6 +117,11 @@ export interface NotesStore {
   typewriterModeEnabled: boolean; // Typewriter mode toggle
   focusModeEnabled: boolean; // Focus mode (dims non-active paragraphs)
   tags: Tag[]; // All unique tags
+  // Folder state
+  folders: Folder[];
+  expandedFolderIds: Set<string>;
+  activeFolderId: string | null;
+  folderViewMode: 'tree' | 'flat';
   // Terminal state (GLOBAL - single session for entire app, cloud-only)
   isTerminalOpen: boolean;
   terminalHeight: number;
@@ -164,6 +175,21 @@ export interface NotesStore {
   removeTagFromNote: (noteId: string, tagId: string) => void;
   getTagById: (id: string) => Tag | undefined;
   getAllTagsWithCounts: () => import('./tags.types').TagWithCount[];
+  // Folder management methods
+  createFolder: (name: string, parentId: string | null) => Folder;
+  updateFolder: (id: string, updates: Partial<Folder>) => void;
+  deleteFolder: (id: string, options?: { deleteNotes?: boolean }) => void;
+  moveFolder: (id: string, newParentId: string | null, index?: number) => void;
+  setActiveFolder: (id: string | null) => void;
+  toggleFolderExpanded: (id: string) => void;
+  moveNoteToFolder: (noteId: string, folderId: string | null) => void;
+  reorderNotesInFolder: (folderId: string | null, noteIds: string[]) => void;
+  getFolderById: (id: string) => Folder | undefined;
+  getFolderPath: (id: string) => string;
+  getFolderTree: () => FolderTreeNode[];
+  getNotesInFolder: (id: string, options?: { recursive?: boolean }) => Note[];
+  getAllFoldersWithVirtual: () => Folder[];
+  setFolderViewMode: (mode: 'tree' | 'flat') => void;
   // Sandbox management methods
   setSandboxStatus: (status: SandboxStatus) => void;
   checkSandboxHealth: () => Promise<boolean>;

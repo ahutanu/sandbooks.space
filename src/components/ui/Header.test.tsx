@@ -46,6 +46,11 @@ vi.mock('./SyncStatusIcon', () => ({
     SyncStatusIcon: () => <div data-testid="sync-status-icon">Sync Status</div>,
 }));
 
+// Mock StatusBadge since it reads from store
+vi.mock('./StatusBadge', () => ({
+    StatusBadge: () => null,
+}));
+
 describe('Header Component', () => {
     const mockToggleMobileSidebar = vi.fn();
 

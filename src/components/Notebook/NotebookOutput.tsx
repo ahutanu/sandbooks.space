@@ -1,7 +1,14 @@
 import React from 'react';
+import { m } from 'framer-motion';
 import DOMPurify from 'dompurify';
 import katex from 'katex';
 import type { JupyterOutput } from '../../types/notebook';
+import {
+  outputContainerVariants,
+  outputBlockVariants,
+  richOutputVariants,
+  errorOutputVariants,
+} from '../../utils/animationVariants';
 import 'katex/dist/katex.min.css';
 
 interface NotebookOutputProps {
@@ -11,6 +18,7 @@ interface NotebookOutputProps {
 /**
  * Renders Jupyter notebook outputs following the nbformat specification
  * Supports: text, HTML, images, LaTeX, errors
+ * Uses stagger animations for progressive reveal
  */
 export const NotebookOutput: React.FC<NotebookOutputProps> = ({ outputs }) => {
   if (!outputs || outputs.length === 0) {
@@ -18,35 +26,46 @@ export const NotebookOutput: React.FC<NotebookOutputProps> = ({ outputs }) => {
   }
 
   return (
-    <div className="notebook-outputs space-y-2">
+    <m.div
+      className="notebook-outputs space-y-2"
+      variants={outputContainerVariants}
+      initial="hidden"
+      animate="visible"
+    >
       {outputs.map((output, idx) => (
         <OutputRenderer key={idx} output={output} />
       ))}
-    </div>
+    </m.div>
   );
 };
 
 /**
  * Renders a single Jupyter output based on its type
+ * Uses appropriate animation variants for different output types
  */
 const OutputRenderer: React.FC<{ output: JupyterOutput }> = ({ output }) => {
   // Stream output (stdout/stderr)
   if (output.output_type === 'stream') {
+    const isError = output.name === 'stderr';
     return (
-      <pre
+      <m.pre
+        variants={isError ? errorOutputVariants : outputBlockVariants}
         className={`stream-output ${
-          output.name === 'stderr' ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-gray-100'
+          isError ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-gray-100'
         } font-mono text-sm p-3 bg-gray-50 dark:bg-stone-800 rounded overflow-x-auto whitespace-pre-wrap break-words`}
       >
         {output.text}
-      </pre>
+      </m.pre>
     );
   }
 
-  // Error output
+  // Error output - uses attention-grabbing shake animation
   if (output.output_type === 'error') {
     return (
-      <div className="error-output p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded">
+      <m.div
+        variants={errorOutputVariants}
+        className="error-output p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded"
+      >
         <div className="font-semibold text-red-700 dark:text-red-400">
           {output.ename}: {output.evalue}
         </div>
@@ -55,7 +74,7 @@ const OutputRenderer: React.FC<{ output: JupyterOutput }> = ({ output }) => {
             {output.traceback.join('\n')}
           </pre>
         )}
-      </div>
+      </m.div>
     );
   }
 
@@ -69,6 +88,7 @@ const OutputRenderer: React.FC<{ output: JupyterOutput }> = ({ output }) => {
 
 /**
  * Renders rich output data based on MIME type priority
+ * Uses spring-scale animation with blur-to-sharp reveal
  */
 const RichOutputRenderer: React.FC<{
   data: JupyterOutput['data'];
@@ -83,7 +103,7 @@ const RichOutputRenderer: React.FC<{
       ADD_ATTR: ['style', 'class']
     });
     return (
-      <div className="rich-output-html">
+      <m.div variants={richOutputVariants} className="rich-output-html">
         {executionCount !== undefined && (
           <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Out[{executionCount}]:</div>
         )}
@@ -91,14 +111,14 @@ const RichOutputRenderer: React.FC<{
           className="html-output p-3 bg-white dark:bg-stone-800 rounded border border-gray-200 dark:border-stone-700 overflow-x-auto"
           dangerouslySetInnerHTML={{ __html: sanitized }}
         />
-      </div>
+      </m.div>
     );
   }
 
-  // Priority 2: Images (matplotlib, PIL)
+  // Priority 2: Images (matplotlib, PIL) - uses rich output with saturation reveal
   if (data['image/png']) {
     return (
-      <div className="rich-output-image">
+      <m.div variants={richOutputVariants} className="rich-output-image">
         {executionCount !== undefined && (
           <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Out[{executionCount}]:</div>
         )}
@@ -107,13 +127,13 @@ const RichOutputRenderer: React.FC<{
           alt="Output"
           className="max-w-full h-auto rounded border border-gray-200 dark:border-stone-700"
         />
-      </div>
+      </m.div>
     );
   }
 
   if (data['image/jpeg']) {
     return (
-      <div className="rich-output-image">
+      <m.div variants={richOutputVariants} className="rich-output-image">
         {executionCount !== undefined && (
           <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Out[{executionCount}]:</div>
         )}
@@ -122,7 +142,7 @@ const RichOutputRenderer: React.FC<{
           alt="Output"
           className="max-w-full h-auto rounded border border-gray-200 dark:border-stone-700"
         />
-      </div>
+      </m.div>
     );
   }
 
@@ -132,7 +152,7 @@ const RichOutputRenderer: React.FC<{
       : String(data['image/svg+xml']);
     const sanitized = DOMPurify.sanitize(svgData);
     return (
-      <div className="rich-output-svg">
+      <m.div variants={richOutputVariants} className="rich-output-svg">
         {executionCount !== undefined && (
           <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Out[{executionCount}]:</div>
         )}
@@ -140,7 +160,7 @@ const RichOutputRenderer: React.FC<{
           className="svg-output max-w-full overflow-auto"
           dangerouslySetInnerHTML={{ __html: sanitized }}
         />
-      </div>
+      </m.div>
     );
   }
 
@@ -164,14 +184,14 @@ const RichOutputRenderer: React.FC<{
     if (renderError) {
       // Fallback to plain text
       return (
-        <pre className="text-sm font-mono p-3 bg-gray-50 dark:bg-stone-800 rounded overflow-x-auto">
+        <m.pre variants={outputBlockVariants} className="text-sm font-mono p-3 bg-gray-50 dark:bg-stone-800 rounded overflow-x-auto">
           {latex}
-        </pre>
+        </m.pre>
       );
     }
 
     return (
-      <div className="rich-output-latex">
+      <m.div variants={richOutputVariants} className="rich-output-latex">
         {executionCount !== undefined && (
           <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Out[{executionCount}]:</div>
         )}
@@ -179,35 +199,35 @@ const RichOutputRenderer: React.FC<{
           className="latex-output p-3 bg-white dark:bg-stone-800 rounded border border-gray-200 dark:border-stone-700 overflow-x-auto"
           dangerouslySetInnerHTML={{ __html: html }}
         />
-      </div>
+      </m.div>
     );
   }
 
   // Priority 4: JSON (for debugging or structured data)
   if (data['application/json']) {
     return (
-      <div className="rich-output-json">
+      <m.div variants={outputBlockVariants} className="rich-output-json">
         {executionCount !== undefined && (
           <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Out[{executionCount}]:</div>
         )}
         <pre className="text-sm font-mono p-3 bg-gray-50 dark:bg-stone-800 rounded overflow-x-auto whitespace-pre-wrap break-words">
           {JSON.stringify(data['application/json'], null, 2)}
         </pre>
-      </div>
+      </m.div>
     );
   }
 
   // Fallback: Plain text
   if (data['text/plain']) {
     return (
-      <div className="rich-output-plain">
+      <m.div variants={outputBlockVariants} className="rich-output-plain">
         {executionCount !== undefined && (
           <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Out[{executionCount}]:</div>
         )}
         <pre className="text-sm font-mono p-3 bg-gray-50 dark:bg-stone-800 rounded overflow-x-auto whitespace-pre-wrap break-words text-gray-900 dark:text-gray-100">
           {data['text/plain'] as string}
         </pre>
-      </div>
+      </m.div>
     );
   }
 

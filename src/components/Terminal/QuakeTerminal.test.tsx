@@ -56,13 +56,16 @@ describe('QuakeTerminal', () => {
     });
 
     describe('Rendering', () => {
-        it('should render hidden when isTerminalOpen is false', () => {
+        it('should not render when isTerminalOpen is false', () => {
             render(<QuakeTerminal />);
-            
-            // It renders but is hidden
+
+            // With AnimatePresence, closed terminal doesn't render at all
             const terminalContainer = document.querySelector('.fixed.left-0.right-0');
-            expect(terminalContainer).toBeInTheDocument();
-            expect(terminalContainer?.className).toContain('-translate-y-full');
+            expect(terminalContainer).not.toBeInTheDocument();
+
+            // Backdrop should also not exist
+            const backdrop = document.querySelector('.glass-scrim');
+            expect(backdrop).not.toBeInTheDocument();
         });
 
         it('should render backdrop and terminal container when open', () => {
@@ -79,8 +82,8 @@ describe('QuakeTerminal', () => {
 
             render(<QuakeTerminal />);
 
-            // Check for backdrop
-            const backdrop = document.querySelector('.fixed.inset-0.bg-black\\/20');
+            // Check for backdrop (now uses glass-scrim class)
+            const backdrop = document.querySelector('.glass-scrim');
             expect(backdrop).toBeInTheDocument();
 
             // Check for terminal container

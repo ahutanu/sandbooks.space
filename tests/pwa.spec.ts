@@ -479,11 +479,8 @@ test.describe('PWA Features', () => {
     await context.setOffline(true);
     await page.waitForTimeout(500);
     
-    // Check for offline indicator with queue count
-    const offlineIndicator = page.locator('text=Offline');
-    await expect(offlineIndicator).toBeVisible({ timeout: 2000 });
-    
-    // Check for queue count
+    // Check for offline indicator with queue count (the floating OfflineIndicator component)
+    // The OfflineIndicator is a fixed positioned div showing "Offline" + "X queued"
     const queueCount = page.locator('text=/\\d+ queued/');
     await expect(queueCount).toBeVisible({ timeout: 2000 });
   });

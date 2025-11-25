@@ -244,7 +244,21 @@ class GitHubService {
   /**
    * Push notes to GitHub
    */
-  async push(notes: Note[], message?: string): Promise<GitHubSyncResult> {
+  async push(
+    notes: Note[],
+    message?: string,
+    folders?: Array<{
+      id: string;
+      name: string;
+      parentId: string | null;
+      sortOrder: number;
+      color?: string;
+      icon?: string;
+      createdAt?: string;
+      updatedAt?: string;
+    }>,
+    deletedFolderIds?: string[]
+  ): Promise<GitHubSyncResult> {
     const repo = localStorage.getItem(GITHUB_STORAGE_KEYS.REPO);
     const path = localStorage.getItem(GITHUB_STORAGE_KEYS.PATH) || 'sandbooks';
 
@@ -255,7 +269,7 @@ class GitHubService {
     const response = await fetchWithTimeout(`${API_BASE_URL}/api/github/sync/push`, {
       method: 'POST',
       headers: getGitHubHeaders(),
-      body: JSON.stringify({ repo, path, notes, message }),
+      body: JSON.stringify({ repo, path, notes, message, folders, deletedFolderIds }),
     });
 
     if (!response.ok) {

@@ -179,9 +179,14 @@ export const ShareModal = ({ note, onClose }: ShareModalProps) => {
     >
       <div
         ref={modalRef}
-        className="bg-white dark:bg-stone-900 rounded-xl border border-stone-200 dark:border-stone-800 p-6 max-w-lg w-full mx-4 shadow-elevation-4 animate-scaleIn"
+        className="relative overflow-hidden bg-white/95 dark:bg-stone-900/95 backdrop-blur-xl rounded-xl border border-stone-200/40 dark:border-stone-700/40 p-6 max-w-lg w-full mx-4 shadow-[0_8px_16px_-4px_rgba(0,0,0,0.12),0_16px_32px_-8px_rgba(0,0,0,0.16)] dark:shadow-[0_8px_16px_-4px_rgba(0,0,0,0.3),0_16px_32px_-8px_rgba(0,0,0,0.4)] animate-scaleIn"
       >
-        <div className="flex items-center justify-between mb-5">
+        {/* Inner glow overlay for glass depth */}
+        <div
+          className="absolute inset-0 rounded-xl bg-gradient-to-br from-white/50 via-transparent to-transparent dark:from-white/10 pointer-events-none"
+          aria-hidden="true"
+        />
+        <div className="relative flex items-center justify-between mb-5">
           <h3
             id="share-modal-title"
             className="text-lg font-bold text-stone-900 dark:text-stone-50 tracking-tight"
@@ -190,7 +195,7 @@ export const ShareModal = ({ note, onClose }: ShareModalProps) => {
           </h3>
           <button
             onClick={handleClose}
-            className="p-1.5 text-stone-400 hover:text-stone-600 dark:hover:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-lg transition-colors"
+            className="p-1.5 text-stone-400 hover:text-stone-600 dark:hover:text-stone-300 hover:bg-stone-100/80 dark:hover:bg-stone-800/80 rounded-lg transition-colors"
             aria-label="Close"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -201,7 +206,7 @@ export const ShareModal = ({ note, onClose }: ShareModalProps) => {
 
         {error ? (
           // Error state
-          <div className="space-y-4">
+          <div className="relative space-y-4">
             <div className="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
               <div className="flex items-start gap-3">
                 <svg className="w-5 h-5 text-amber-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -238,7 +243,7 @@ export const ShareModal = ({ note, onClose }: ShareModalProps) => {
           </div>
         ) : (
           // Success state
-          <div className="space-y-5">
+          <div className="relative space-y-5">
             {/* Link Preview */}
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider text-stone-500 dark:text-stone-400 mb-2">
@@ -332,7 +337,7 @@ export const ShareModal = ({ note, onClose }: ShareModalProps) => {
         )}
 
         {/* Action Buttons */}
-        <div className="flex gap-3 justify-end mt-6 pt-4 border-t border-stone-200 dark:border-stone-800">
+        <div className="relative flex gap-3 justify-end mt-6 pt-4 border-t border-stone-200/40 dark:border-stone-700/40">
           <button
             onClick={handleClose}
             className="px-4 py-2 text-sm font-medium text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-lg transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-400"

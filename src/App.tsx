@@ -8,6 +8,7 @@ import { AnalyticsConsent } from './components/ui/AnalyticsConsent';
 import { DocsUpdateNotification } from './components/ui/DocsUpdateNotification';
 import { PayloadViewerBanner, PayloadLoading, PayloadError, ShareModal } from './components/Share';
 import { RepoSelector, SyncConflictModal } from './components/GitHub';
+import { MotionProvider } from './components/ui/MotionProvider';
 import { isCurrentUrlPayload } from './utils/payload';
 import type { JSONContent } from '@tiptap/react';
 
@@ -183,84 +184,86 @@ function App() {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-white dark:bg-stone-900">
-      {/* Skip to content link for accessibility */}
-      <a
-        href="#main-content"
-        className="sr-only focus:not-sr-only focus:absolute focus:z-[100] focus:top-4 focus:left-4 focus:px-4 focus:py-2 focus:bg-blue-600 focus:text-white focus:rounded-lg focus:shadow-lg focus:outline-none"
-      >
-        Skip to main content
-      </a>
-      <Header onToggleMobileSidebar={toggleMobileSidebar} />
-      <Suspense fallback={null}>
-        <SearchBar />
-        <KeyboardShortcuts />
-        <QuakeTerminal />
-      </Suspense>
-      {/* Glass morphism editor mode indicator (bottom-right, contextual) */}
-      <EditorModeIndicator />
-      {/* Analytics consent banner (minimal, non-intrusive) */}
-      <AnalyticsConsent />
-      {/* Docs update notification (shows when built-in guides have been updated) */}
-      <DocsUpdateNotification />
-      {/* Share modal */}
-      {isShareModalOpen && activeNote && (
-        <ShareModal
-          note={activeNote}
-          onClose={() => setShareModalOpen(false)}
-        />
-      )}
-      {/* GitHub sync modals */}
-      <RepoSelector />
-      <SyncConflictModal />
-      {/* Two-pane layout: Sidebar + Editor (industry-standard flex pattern) */}
-      <div className="flex-1 flex overflow-hidden bg-white dark:bg-stone-900">
-        {/* Desktop sidebar - independently scrollable */}
-        <Sidebar />
-
-        {/* Mobile sidebar overlay */}
-        {isMobileSidebarOpen && (
-          <div className="fixed inset-0 z-[60] md:hidden">
-            {/* Backdrop - glassmorphism for premium feel */}
-            <div
-              className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity duration-300 ease-out animate-fadeIn"
-              onClick={closeMobileSidebar}
-              role="button"
-              aria-label="Close sidebar"
-              tabIndex={0}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  closeMobileSidebar();
-                }
-              }}
-            />
-            {/* Sidebar - full height with proper stacking and spring animation */}
-            <div className="absolute left-0 top-0 bottom-0 w-full max-w-[85vw] sm:w-80 sm:max-w-none z-50 bg-white dark:bg-stone-900 shadow-2xl animate-slideInLeft">
-              <Sidebar isMobile={true} onClose={closeMobileSidebar} />
-            </div>
-          </div>
+    <MotionProvider>
+      <div className="h-screen flex flex-col bg-white dark:bg-stone-900">
+        {/* Skip to content link for accessibility */}
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:absolute focus:z-[100] focus:top-4 focus:left-4 focus:px-4 focus:py-2 focus:bg-blue-600 focus:text-white focus:rounded-lg focus:shadow-lg focus:outline-none"
+        >
+          Skip to main content
+        </a>
+        <Header onToggleMobileSidebar={toggleMobileSidebar} />
+        <Suspense fallback={null}>
+          <SearchBar />
+          <KeyboardShortcuts />
+          <QuakeTerminal />
+        </Suspense>
+        {/* Glass morphism editor mode indicator (bottom-right, contextual) */}
+        <EditorModeIndicator />
+        {/* Analytics consent banner (minimal, non-intrusive) */}
+        <AnalyticsConsent />
+        {/* Docs update notification (shows when built-in guides have been updated) */}
+        <DocsUpdateNotification />
+        {/* Share modal */}
+        {isShareModalOpen && activeNote && (
+          <ShareModal
+            note={activeNote}
+            onClose={() => setShareModalOpen(false)}
+          />
         )}
+        {/* GitHub sync modals */}
+        <RepoSelector />
+        <SyncConflictModal />
+        {/* Two-pane layout: Sidebar + Editor (industry-standard flex pattern) */}
+        <div className="flex-1 flex overflow-hidden bg-white dark:bg-stone-900">
+          {/* Desktop sidebar - independently scrollable */}
+          <Sidebar />
 
-        {/* Main editor pane - independently scrollable */}
-        <main className="flex-1 flex flex-col overflow-hidden bg-white dark:bg-stone-900">
-          {activeNote ? (
-            <Editor note={activeNote} onUpdate={handleContentUpdate} />
-          ) : (
-            <div className="flex-1 flex items-center justify-center overflow-y-auto">
-              <div className="text-center">
-                <div className="mb-8">
-                  <svg className="w-16 h-16 mx-auto text-stone-300 dark:text-stone-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V7a2 2 0 012-2h6a2 2 0 012 2v2M7 7a2 2 0 012-2h6a2 2 0 012 2" />
-                  </svg>
-                </div>
-                <p className="text-lg text-stone-500 dark:text-stone-400 font-medium">Select a note or create a new one to get started</p>
+          {/* Mobile sidebar overlay */}
+          {isMobileSidebarOpen && (
+            <div className="fixed inset-0 z-[60] md:hidden">
+              {/* Backdrop - glassmorphism for premium feel */}
+              <div
+                className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity duration-300 ease-out animate-fadeIn"
+                onClick={closeMobileSidebar}
+                role="button"
+                aria-label="Close sidebar"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    closeMobileSidebar();
+                  }
+                }}
+              />
+              {/* Sidebar - full height with proper stacking and spring animation */}
+              <div className="absolute left-0 top-0 bottom-0 w-full max-w-[85vw] sm:w-80 sm:max-w-none z-50 bg-white dark:bg-stone-900 shadow-2xl animate-slideInLeft">
+                <Sidebar isMobile={true} onClose={closeMobileSidebar} />
               </div>
             </div>
           )}
-        </main>
+
+          {/* Main editor pane - independently scrollable */}
+          <main className="flex-1 flex flex-col overflow-hidden bg-white dark:bg-stone-900">
+            {activeNote ? (
+              <Editor note={activeNote} onUpdate={handleContentUpdate} />
+            ) : (
+              <div className="flex-1 flex items-center justify-center overflow-y-auto">
+                <div className="text-center">
+                  <div className="mb-8">
+                    <svg className="w-16 h-16 mx-auto text-stone-300 dark:text-stone-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V7a2 2 0 012-2h6a2 2 0 012 2v2M7 7a2 2 0 012-2h6a2 2 0 012 2" />
+                    </svg>
+                  </div>
+                  <p className="text-lg text-stone-500 dark:text-stone-400 font-medium">Select a note or create a new one to get started</p>
+                </div>
+              </div>
+            )}
+          </main>
+        </div>
       </div>
-    </div>
+    </MotionProvider>
   );
 }
 

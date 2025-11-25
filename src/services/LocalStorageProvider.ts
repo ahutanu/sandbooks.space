@@ -1,5 +1,6 @@
 import type { Note } from '../types';
 import { showToast as toast } from '../utils/toast';
+import { sanitizeNotes } from '../utils/contentSanitizer';
 import type { StorageProvider, StorageProviderMetadata } from './StorageProvider';
 
 const STORAGE_KEY = 'sandbooks_notes';
@@ -22,7 +23,9 @@ export class LocalStorageProvider implements StorageProvider {
         try {
             const data = localStorage.getItem(STORAGE_KEY);
             if (!data || data === 'null') return [];
-            return JSON.parse(data);
+            const notes = JSON.parse(data) as Note[];
+            // Sanitize content to remove empty text nodes that cause TipTap errors
+            return sanitizeNotes(notes);
         } catch (_error) {
             return [];
         }

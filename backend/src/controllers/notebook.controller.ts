@@ -1,7 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 import notebookKernelService from '../services/notebookKernelService';
 import { ExecuteCellRequest } from '../types/notebook.types';
+import { HopxError } from '../utils/errors';
 import logger from '../utils/logger';
+import { getErrorMessage } from '../utils/errorUtils';
 
 /**
  * Execute a code cell in a notebook
@@ -12,8 +14,9 @@ export const executeCell = async (
   res: Response,
   next: NextFunction
 ) => {
+  const { noteId } = req.params;
+
   try {
-    const { noteId } = req.params;
     const { code } = req.body as ExecuteCellRequest;
 
     logger.info('Received execute cell request', { noteId, codeLength: code.length });
@@ -22,7 +25,25 @@ export const executeCell = async (
 
     res.status(200).json(result);
   } catch (error) {
-    next(error);
+    const errorMessage = getErrorMessage(error);
+
+    // Log detailed error for debugging
+    logger.error('Execute cell failed', {
+      noteId,
+      errorType: error instanceof Error ? error.constructor.name : typeof error,
+      error: errorMessage,
+      stack: error instanceof Error ? error.stack : undefined
+    });
+
+    // Classify and wrap errors for better client handling
+    if (errorMessage.includes('sandbox') ||
+        errorMessage.includes('Hopx') ||
+        errorMessage.includes('timeout') ||
+        errorMessage.includes('API')) {
+      next(new HopxError(errorMessage, 502));
+    } else {
+      next(error);
+    }
   }
 };
 

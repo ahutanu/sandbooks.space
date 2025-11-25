@@ -45,5 +45,9 @@ export async function seedCleanState(page: Page) {
     localStorage.setItem('sandbooks-focus-mode', 'false');
     // Dismiss analytics consent to avoid modal blocking tests
     localStorage.setItem('sandbooks-analytics-consent', 'disabled');
+    // Initialize empty folders array for folder system
+    localStorage.setItem('sandbooks-folders', JSON.stringify([]));
+    // Initialize empty deleted folder IDs for GitHub sync
+    localStorage.setItem('sandbooks-deleted-folder-ids', JSON.stringify([]));
   });
 }

@@ -142,10 +142,15 @@ export const SyncConflictModal = () => {
     >
       <div
         ref={modalRef}
-        className="bg-white dark:bg-stone-900 rounded-xl border border-stone-200 dark:border-stone-800 w-full max-w-lg mx-4 shadow-elevation-4 animate-scaleIn overflow-hidden"
+        className="relative bg-white/95 dark:bg-stone-900/95 backdrop-blur-xl rounded-xl border border-stone-200/40 dark:border-stone-700/40 w-full max-w-lg mx-4 shadow-[0_8px_16px_-4px_rgba(0,0,0,0.12),0_16px_32px_-8px_rgba(0,0,0,0.16)] dark:shadow-[0_8px_16px_-4px_rgba(0,0,0,0.3),0_16px_32px_-8px_rgba(0,0,0,0.4)] animate-scaleIn overflow-hidden"
       >
+        {/* Inner glow overlay for glass depth */}
+        <div
+          className="absolute inset-0 rounded-xl bg-gradient-to-br from-white/50 via-transparent to-transparent dark:from-white/10 pointer-events-none"
+          aria-hidden="true"
+        />
         {/* Header */}
-        <div className="flex items-start justify-between px-5 py-4 border-b border-stone-200 dark:border-stone-800 bg-amber-50 dark:bg-amber-900/20">
+        <div className="relative flex items-start justify-between px-5 py-4 border-b border-stone-200/40 dark:border-stone-700/40 bg-amber-50/80 dark:bg-amber-900/20">
           <div className="flex items-start gap-3">
             <div className="p-2 rounded-full bg-amber-100 dark:bg-amber-900/40">
               <LuTriangleAlert className="w-5 h-5 text-amber-600 dark:text-amber-400" />
@@ -173,9 +178,9 @@ export const SyncConflictModal = () => {
         </div>
 
         {/* Content */}
-        <div className="p-5">
+        <div className="relative p-5">
           {/* Context info */}
-          <div className="flex items-center justify-between text-sm text-stone-600 dark:text-stone-400 mb-4 pb-4 border-b border-stone-200 dark:border-stone-800">
+          <div className="flex items-center justify-between text-sm text-stone-600 dark:text-stone-400 mb-4 pb-4 border-b border-stone-200/40 dark:border-stone-700/40">
             <div className="flex items-center gap-2">
               <LuHardDrive className="w-4 h-4" />
               <span>{notes.length} local notes</span>
@@ -262,7 +267,7 @@ export const SyncConflictModal = () => {
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end gap-3 px-5 py-4 border-t border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-800/50">
+        <div className="relative flex justify-end gap-3 px-5 py-4 border-t border-stone-200/40 dark:border-stone-700/40 bg-stone-50/80 dark:bg-stone-800/40">
           <button
             onClick={handleClose}
             disabled={isResolving}

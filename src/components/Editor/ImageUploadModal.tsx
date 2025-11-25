@@ -212,17 +212,22 @@ export const ImageUploadModal = ({ onInsert, onClose, initialFiles }: ImageUploa
     >
       <div
         ref={modalRef}
-        className="bg-white dark:bg-stone-900 rounded-xl border border-stone-200 dark:border-stone-800 p-6 max-w-md w-full mx-4 shadow-elevation-4 animate-scaleIn"
+        className="relative overflow-hidden bg-white/95 dark:bg-stone-900/95 backdrop-blur-xl rounded-xl border border-stone-200/40 dark:border-stone-700/40 p-6 max-w-md w-full mx-4 shadow-[0_8px_16px_-4px_rgba(0,0,0,0.12),0_16px_32px_-8px_rgba(0,0,0,0.16)] dark:shadow-[0_8px_16px_-4px_rgba(0,0,0,0.3),0_16px_32px_-8px_rgba(0,0,0,0.4)] animate-scaleIn"
       >
+        {/* Inner glow overlay for glass depth */}
+        <div
+          className="absolute inset-0 rounded-xl bg-gradient-to-br from-white/50 via-transparent to-transparent dark:from-white/10 pointer-events-none"
+          aria-hidden="true"
+        />
         <h3
           id="image-upload-modal-title"
-          className="text-lg font-bold mb-5 text-stone-900 dark:text-stone-50 tracking-tight"
+          className="relative text-lg font-bold mb-5 text-stone-900 dark:text-stone-50 tracking-tight"
         >
           Insert Image
         </h3>
 
         {/* Tab-like section headers */}
-        <div className="space-y-5">
+        <div className="relative space-y-5">
           {/* URL Input Section */}
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wider text-stone-500 dark:text-stone-400 mb-2">
@@ -250,10 +255,10 @@ export const ImageUploadModal = ({ onInsert, onClose, initialFiles }: ImageUploa
           {/* Divider */}
           <div className="relative py-1">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-stone-200 dark:border-stone-800" />
+              <div className="w-full border-t border-stone-200/40 dark:border-stone-700/40" />
             </div>
             <div className="relative flex justify-center text-xs uppercase tracking-wider font-medium">
-              <span className="px-3 bg-white dark:bg-stone-900 text-stone-400 dark:text-stone-500">
+              <span className="px-3 bg-white/95 dark:bg-stone-900/95 text-stone-400 dark:text-stone-500">
                 or
               </span>
             </div>
@@ -334,7 +339,7 @@ export const ImageUploadModal = ({ onInsert, onClose, initialFiles }: ImageUploa
         </div>
 
         {/* Action Buttons */}
-        <div className="flex gap-3 justify-end mt-8">
+        <div className="relative flex gap-3 justify-end mt-8">
           <button
             onClick={onClose}
             disabled={isProcessing}

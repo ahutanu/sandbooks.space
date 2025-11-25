@@ -37,6 +37,7 @@ backend/dist/
 backend/build/
 backend-artifact.zip
 deployments/
+logs_latest/
 dev-dist/
 
 # Editor directories and files

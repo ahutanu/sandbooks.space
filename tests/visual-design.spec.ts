@@ -92,9 +92,10 @@ test.describe('Visual Design System Compliance', () => {
     // Check that notes are visible in sidebar (seedCleanState creates "Test Note")
     // Wait a bit for notes to render
     await page.waitForTimeout(500);
-    const notes = page.locator('aside button').filter({ hasText: /Test Note|Welcome|Writing|Rich|Note/i });
+    // Notes are rendered as div[role="treeitem"] or have id starting with "note-"
+    const notes = page.locator('[id^="note-"]');
     const noteCount = await notes.count();
-    // At least one note button should exist (could be "Test Note" from seedCleanState)
+    // At least one note should exist (could be "Test Note" from seedCleanState)
     expect(noteCount).toBeGreaterThan(0);
   });
 

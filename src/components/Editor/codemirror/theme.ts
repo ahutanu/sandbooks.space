@@ -26,7 +26,7 @@ export const sandbooksTheme = (mode: 'light' | 'dark'): Extension => {
     // Text
     text: '#FFFFFF',              // Pure white (high contrast)
     textInactive: '#7F8C99',      // Muted gray
-    cursor: '#5AC8FA',            // iOS blue
+    cursor: '#5AC8FA',            // System blue
 
     // UI Elements
     gutter: '#292A30',            // Same as background (seamless)
@@ -84,7 +84,7 @@ export const sandbooksTheme = (mode: 'light' | 'dark'): Extension => {
       lineHeight: '1.625', // Optimal line height (matches research)
       height: 'auto',
 
-      // Scrollbar (macOS Style - Overlay)
+      // Scrollbar (Overlay Style)
       '&::-webkit-scrollbar': {
         width: '10px',
         height: '10px',

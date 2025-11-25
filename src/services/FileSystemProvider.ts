@@ -1,6 +1,7 @@
 import type { Note } from '../types';
 import { nanoid } from 'nanoid';
 import { serializeToMarkdown, parseMarkdown } from '../utils/markdownSerializer';
+import { sanitizeNoteContent } from '../utils/contentSanitizer';
 import type { JSONContent } from '@tiptap/core';
 import type { StorageProvider, StorageProviderMetadata } from './StorageProvider';
 
@@ -90,7 +91,7 @@ export class FileSystemProvider implements StorageProvider {
             try {
                 const file = await handle.getFile();
                 const text = await file.text();
-                const note = this.parseNoteFile(text, handle.name, '');
+                let note = this.parseNoteFile(text, handle.name, '');
 
                 // Ensure ID uniqueness to prevent UI glitches (e.g. sidebar highlighting)
                 if (seenIds.has(note.id)) {
@@ -99,6 +100,8 @@ export class FileSystemProvider implements StorageProvider {
                 }
                 seenIds.add(note.id);
 
+                // Sanitize content to remove empty text nodes that cause TipTap errors
+                note = sanitizeNoteContent(note);
                 notes.push(note);
             } catch (error) {
                 console.error(`Failed to parse note ${handle.name}:`, error);

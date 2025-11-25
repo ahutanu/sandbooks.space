@@ -1,5 +1,8 @@
 import React, { useEffect, useRef, useCallback, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { AnimatePresence, m } from 'framer-motion';
 import clsx from 'clsx';
+import { contextMenuVariants, staggerContainerVariants, staggerItemVariants } from '../../utils/animationVariants';
 
 export interface ContextMenuItem {
   id: string;
@@ -23,13 +26,14 @@ interface MenuPosition {
 }
 
 /**
- * Context menu component with Apple-like styling
+ * Context menu component with modern styling
  *
  * Features:
  * - Keyboard navigation (Arrow keys, Enter, Escape)
  * - Focus management
  * - Viewport boundary detection
  * - Glass morphism styling
+ * - Staggered animation for items
  *
  * Usage:
  * <ContextMenu items={[{ id: 'copy', label: 'Copy', onClick: handleCopy }]}>
@@ -38,7 +42,6 @@ interface MenuPosition {
  */
 export const ContextMenu: React.FC<ContextMenuProps> = ({ items, children, className }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [isClosing, setIsClosing] = useState(false);
   const [position, setPosition] = useState<MenuPosition>({ x: 0, y: 0 });
   const [focusedIndex, setFocusedIndex] = useState(-1);
   const focusedIndexRef = useRef(focusedIndex);
@@ -53,12 +56,8 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ items, children, class
 
   const closeMenu = useCallback(() => {
     if (isOpen) {
-      setIsClosing(true);
       setFocusedIndex(-1);
-      setTimeout(() => {
-        setIsClosing(false);
-        setIsOpen(false);
-      }, 100);
+      setIsOpen(false);
     }
   }, [isOpen]);
 
@@ -72,7 +71,6 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ items, children, class
 
     setPosition({ x, y });
     setIsOpen(true);
-    setIsClosing(false);
   }, []);
 
   const handleItemClick = useCallback((item: ContextMenuItem) => {
@@ -198,8 +196,6 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ items, children, class
     }
   }, [focusedIndex]);
 
-  const isVisible = isOpen || isClosing;
-
   return (
     <>
       <div
@@ -210,64 +206,80 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ items, children, class
         {children}
       </div>
 
-      {isVisible && (
-        <div
-          ref={menuRef}
-          role="menu"
-          aria-label="Context menu"
-          className={clsx(
-            'fixed z-[100] min-w-[160px] py-1.5',
-            'bg-white/95 dark:bg-stone-800/95 backdrop-blur-xl',
-            'rounded-lg shadow-xl',
-            'border border-stone-200/80 dark:border-stone-700/80',
-            'transition-all duration-100 ease-out',
-            isClosing
-              ? 'opacity-0 scale-95'
-              : 'opacity-100 scale-100'
-          )}
-          style={{
-            left: position.x,
-            top: position.y,
-            transformOrigin: 'top left',
-          }}
-        >
-          {items.map((item, index) => (
-            <button
-              key={item.id}
-              ref={el => { itemRefs.current[index] = el; }}
-              role="menuitem"
-              tabIndex={focusedIndex === index ? 0 : -1}
-              disabled={item.disabled}
-              onClick={() => handleItemClick(item)}
-              onMouseEnter={() => setFocusedIndex(index)}
+      {createPortal(
+        <AnimatePresence>
+          {isOpen && (
+            <m.div
+              ref={menuRef}
+              role="menu"
+              aria-label="Context menu"
               className={clsx(
-                'w-full flex items-center gap-2.5 px-3 py-1.5 text-sm text-left',
-                'transition-colors duration-75',
-                'focus:outline-none',
-                focusedIndex === index && !item.disabled && 'bg-stone-100 dark:bg-stone-700',
-                item.disabled
-                  ? 'opacity-40 cursor-not-allowed'
-                  : item.variant === 'danger'
-                    ? 'text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30'
-                    : 'text-stone-700 dark:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-700',
-                index === 0 && 'rounded-t-md',
-                index === items.length - 1 && 'rounded-b-md'
+                'fixed z-[100] min-w-[160px] py-1.5',
+                // Use Liquid Glass elevated class
+                'glass-elevated rounded-xl overflow-hidden'
               )}
+              style={{
+                left: position.x,
+                top: position.y,
+                transformOrigin: 'top left',
+              }}
+              variants={contextMenuVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
             >
-              {item.icon && (
-                <span className="w-4 h-4 flex items-center justify-center opacity-70">
-                  {item.icon}
-                </span>
-              )}
-              <span className="flex-1">{item.label}</span>
-              {item.shortcut && (
-                <span className="text-xs text-stone-400 dark:text-stone-500 ml-4">
-                  {item.shortcut}
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
+              {/* Inner glow overlay for glass depth */}
+              <div
+                className="absolute inset-0 rounded-xl bg-gradient-to-br from-white/40 via-transparent to-transparent dark:from-white/10 pointer-events-none"
+                aria-hidden="true"
+              />
+              <m.div
+                variants={staggerContainerVariants}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+              >
+                {items.map((item, index) => (
+                  <m.button
+                    key={item.id}
+                    ref={el => { itemRefs.current[index] = el; }}
+                    role="menuitem"
+                    tabIndex={focusedIndex === index ? 0 : -1}
+                    disabled={item.disabled}
+                    onClick={() => handleItemClick(item)}
+                    onMouseEnter={() => setFocusedIndex(index)}
+                    className={clsx(
+                      'relative w-full flex items-center gap-2.5 px-3 py-1.5 text-sm text-left',
+                      'transition-colors duration-instant',
+                      'focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500/50',
+                      focusedIndex === index && !item.disabled && 'bg-stone-100/80 dark:bg-stone-700/80',
+                      item.disabled
+                        ? 'opacity-40 cursor-not-allowed'
+                        : item.variant === 'danger'
+                          ? 'text-red-600 dark:text-red-400 hover:bg-red-50/80 dark:hover:bg-red-900/40'
+                          : 'text-stone-700 dark:text-stone-200 hover:bg-stone-100/80 dark:hover:bg-stone-700/80'
+                    )}
+                    variants={staggerItemVariants}
+                    whileTap={!item.disabled ? { scale: 0.98 } : undefined}
+                  >
+                    {item.icon && (
+                      <span className="w-4 h-4 flex items-center justify-center opacity-70">
+                        {item.icon}
+                      </span>
+                    )}
+                    <span className="flex-1">{item.label}</span>
+                    {item.shortcut && (
+                      <span className="text-xs text-stone-400 dark:text-stone-500 ml-4">
+                        {item.shortcut}
+                      </span>
+                    )}
+                  </m.button>
+                ))}
+              </m.div>
+            </m.div>
+          )}
+        </AnimatePresence>,
+        document.body
       )}
     </>
   );

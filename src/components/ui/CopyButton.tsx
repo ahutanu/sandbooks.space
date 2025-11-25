@@ -18,7 +18,7 @@ export interface CopyButtonProps extends Omit<React.ButtonHTMLAttributes<HTMLBut
 }
 
 /**
- * Reusable copy button with Apple-style icon morph animation
+ * Reusable copy button with smooth icon morph animation
  *
  * Features:
  * - Icon morphs from copy to checkmark on success

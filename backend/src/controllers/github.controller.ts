@@ -277,12 +277,13 @@ export const selectRepo = async (req: Request, res: Response, next: NextFunction
 export const pushNotes = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { token, deviceId } = getTokenFromHeaders(req);
-    const { repo, path, notes, message } = req.body as SyncPushRequest;
+    const { repo, path, notes, message, folders } = req.body as SyncPushRequest;
 
     logger.info('Pushing notes to GitHub', {
       repo,
       path,
       noteCount: notes.length,
+      folderCount: folders?.length || 0,
       deviceId: redactToken(deviceId),
     });
 
@@ -299,8 +300,10 @@ export const pushNotes = async (req: Request, res: Response, next: NextFunction)
         updatedAt: string;
         tags?: Array<{ id: string; name: string; color: string }>;
         isSystemDoc?: boolean;
+        folderId?: string | null;
       }>,
-      message
+      message,
+      folders
     );
 
     res.json(result);

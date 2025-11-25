@@ -1,6 +1,8 @@
 import { useState, useEffect, forwardRef, useImperativeHandle, useRef } from 'react';
+import { m } from 'framer-motion';
 import clsx from 'clsx';
 import type { SlashCommandItem } from './extensions/slashCommands';
+import { menuContainerVariants, menuItemVariants, tapFeedback } from '../../utils/animationVariants';
 
 interface SlashMenuListProps {
   items: SlashCommandItem[];
@@ -221,20 +223,30 @@ export const SlashMenuList = forwardRef<SlashMenuListHandle, SlashMenuListProps>
     }
 
     return (
-      <div className="relative backdrop-blur-xl bg-white/90 dark:bg-stone-900/90 rounded-xl shadow-elevation-4 border border-stone-200/40 dark:border-stone-700/40 overflow-hidden min-w-[320px] max-w-[400px]">
+      <m.div
+        className="relative backdrop-blur-xl bg-white/90 dark:bg-stone-900/90 rounded-xl shadow-elevation-4 border border-stone-200/40 dark:border-stone-700/40 overflow-hidden min-w-[320px] max-w-[400px]"
+        variants={menuContainerVariants}
+        initial="hidden"
+        animate="visible"
+      >
         {/* Inner glow overlay for glass depth */}
         <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-white/40 via-transparent to-transparent dark:from-white/5 pointer-events-none" aria-hidden="true" />
-        <div className="relative px-3 py-2 border-b border-stone-200/40 dark:border-stone-700/40 bg-stone-50/50 dark:bg-stone-900/50">
+        <m.div
+          className="relative px-3 py-2 border-b border-stone-200/40 dark:border-stone-700/40 bg-stone-50/50 dark:bg-stone-900/50"
+          variants={menuItemVariants}
+        >
           <div className="text-xs font-medium text-stone-600 dark:text-stone-400 uppercase tracking-wide">
             Commands
           </div>
-        </div>
+        </m.div>
         <div ref={containerRef} className="relative max-h-[360px] overflow-y-auto py-1">
           {items.map((item, index) => (
-            <button
+            <m.button
               key={index}
               ref={(el) => (itemRefs.current[index] = el)}
               onClick={() => selectItem(index)}
+              variants={menuItemVariants}
+              whileTap={tapFeedback}
               className={clsx(
                 'w-full px-3 py-2.5 flex items-start gap-3 transition-all duration-150',
                 'focus-visible:outline-none',
@@ -271,10 +283,13 @@ export const SlashMenuList = forwardRef<SlashMenuListHandle, SlashMenuListProps>
                   {item.description}
                 </div>
               </div>
-            </button>
+            </m.button>
           ))}
         </div>
-        <div className="relative px-3 py-2 border-t border-stone-200/40 dark:border-stone-700/40 bg-stone-50/50 dark:bg-stone-900/50">
+        <m.div
+          className="relative px-3 py-2 border-t border-stone-200/40 dark:border-stone-700/40 bg-stone-50/50 dark:bg-stone-900/50"
+          variants={menuItemVariants}
+        >
           <div className="text-xs text-stone-500 dark:text-stone-400 flex items-center gap-3">
             <span className="flex items-center gap-1">
               <kbd className="px-1.5 py-0.5 text-xs bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-600 rounded shadow-sm">
@@ -295,8 +310,8 @@ export const SlashMenuList = forwardRef<SlashMenuListHandle, SlashMenuListProps>
               Close
             </span>
           </div>
-        </div>
-      </div>
+        </m.div>
+      </m.div>
     );
   }
 );

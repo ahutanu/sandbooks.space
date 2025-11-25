@@ -180,11 +180,13 @@ export const TagColorPicker: React.FC<TagColorPickerProps> = ({
         aria-label={`Choose color for ${tagName} tag`}
         className="
           fixed z-50
-          bg-white/95 dark:bg-stone-900/95
+          bg-white/90 dark:bg-stone-800/90
           backdrop-blur-xl
           rounded-xl
-          shadow-2xl
-          border border-stone-200/50 dark:border-stone-700/50
+          overflow-hidden
+          shadow-[0_4px_6px_-2px_rgba(0,0,0,0.08),0_8px_16px_-4px_rgba(0,0,0,0.12)]
+          dark:shadow-[0_4px_6px_-2px_rgba(0,0,0,0.2),0_8px_16px_-4px_rgba(0,0,0,0.3)]
+          border border-stone-200/40 dark:border-stone-700/40
           p-4
           transform
           transition-all duration-200
@@ -196,8 +198,13 @@ export const TagColorPicker: React.FC<TagColorPickerProps> = ({
           willChange: 'transform, opacity',
         }}
       >
+        {/* Inner glow overlay for glass depth */}
+        <div
+          className="absolute inset-0 rounded-xl bg-gradient-to-br from-white/40 via-transparent to-transparent dark:from-white/10 pointer-events-none"
+          aria-hidden="true"
+        />
         {/* Header */}
-        <div className="mb-3">
+        <div className="relative mb-3">
           <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-100">
             Choose tag color
           </h3>
@@ -208,7 +215,7 @@ export const TagColorPicker: React.FC<TagColorPickerProps> = ({
 
         {/* Color Grid */}
         <div
-          className="grid grid-cols-4 gap-2"
+          className="relative grid grid-cols-4 gap-2"
           role="group"
           aria-label="Color options"
         >
@@ -251,7 +258,7 @@ export const TagColorPicker: React.FC<TagColorPickerProps> = ({
         </div>
 
         {/* Footer hint */}
-        <div className="mt-3 pt-3 border-t border-stone-200/50 dark:border-stone-700/50">
+        <div className="relative mt-3 pt-3 border-t border-stone-200/40 dark:border-stone-700/40">
           <p className="text-xs text-stone-500 dark:text-stone-400 text-center">
             Press <kbd className="px-1.5 py-0.5 rounded bg-stone-200 dark:bg-stone-800 font-mono text-[10px]">Esc</kbd> to close
           </p>

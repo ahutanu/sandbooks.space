@@ -1,6 +1,7 @@
 import { NodeViewWrapper } from '@tiptap/react';
 import type { NodeViewProps } from '@tiptap/react';
 import React, { useState, useEffect, useRef } from 'react';
+import { m, AnimatePresence } from 'framer-motion';
 import type { Language, ExecutionResult } from '../../types';
 import { useNotesStore } from '../../store/notesStore';
 import { showToast as toast } from '../../utils/toast';
@@ -14,6 +15,10 @@ import { recordOnboardingEvent } from '../../utils/onboardingMetrics';
 import { NotebookOutput } from '../Notebook/NotebookOutput';
 import { executeCell } from '../../services/notebook';
 import type { JupyterOutput } from '../../types/notebook';
+import {
+  enhancedExecutionVariants,
+  executionCountVariants,
+} from '../../utils/animationVariants';
 
 // Format elapsed time with appropriate units
 const formatElapsedTime = (ms: number): string => {
@@ -33,8 +38,35 @@ export const ExecutableCodeBlockComponent = ({ node, updateAttributes }: NodeVie
   const activeNoteId = useNotesStore((state) => state.activeNoteId);
   const [isExecuting, setIsExecuting] = useState(false);
   const [elapsedTime, setElapsedTime] = useState(0);
+  const [executionFeedback, setExecutionFeedback] = useState<'idle' | 'running' | 'success' | 'error'>('idle');
+  const [countAnimationKey, setCountAnimationKey] = useState(0);
   const startTimeRef = useRef<number | null>(null);
+  const prevCountRef = useRef<number | undefined>(undefined);
   const language = (node.attrs.language as Language) || 'python';
+
+  // Extract node attributes
+  const executionResult = node.attrs.executionResult as ExecutionResult | undefined;
+  const executionCount = node.attrs.executionCount as number | undefined;
+  const jupyterOutputs = node.attrs.jupyterOutputs as JupyterOutput[] | undefined;
+
+  // Backward compatibility: Try attrs.code first, fallback to textContent
+  const code = (node.attrs.code as string) || node.textContent || '';
+
+  // Reset feedback after animation completes
+  useEffect(() => {
+    if (executionFeedback === 'success' || executionFeedback === 'error') {
+      const timer = setTimeout(() => setExecutionFeedback('idle'), 600);
+      return () => clearTimeout(timer);
+    }
+  }, [executionFeedback]);
+
+  // Trigger count badge animation when execution count changes
+  useEffect(() => {
+    if (executionCount !== undefined && executionCount !== prevCountRef.current) {
+      setCountAnimationKey((k) => k + 1);
+      prevCountRef.current = executionCount;
+    }
+  }, [executionCount]);
 
   // Live elapsed time counter during execution
   useEffect(() => {
@@ -54,12 +86,6 @@ export const ExecutableCodeBlockComponent = ({ node, updateAttributes }: NodeVie
       if (intervalId) clearInterval(intervalId);
     };
   }, [isExecuting]);
-  const executionResult = node.attrs.executionResult as ExecutionResult | undefined;
-  const executionCount = node.attrs.executionCount as number | undefined;
-  const jupyterOutputs = node.attrs.jupyterOutputs as JupyterOutput[] | undefined;
-
-  // Backward compatibility: Try attrs.code first, fallback to textContent
-  const code = (node.attrs.code as string) || node.textContent || '';
 
   // Handle code changes from CodeMirror
   const handleCodeChange = (newCode: string) => {
@@ -79,6 +105,7 @@ export const ExecutableCodeBlockComponent = ({ node, updateAttributes }: NodeVie
     }
 
     setIsExecuting(true);
+    setExecutionFeedback('running');
     updateAttributes({ isExecuting: true, executionResult: undefined, jupyterOutputs: undefined });
 
     try {
@@ -105,6 +132,7 @@ export const ExecutableCodeBlockComponent = ({ node, updateAttributes }: NodeVie
           hadError: false,
         });
 
+        setExecutionFeedback('success');
         toast.success('Code executed successfully', { duration: 4000 });
       } else {
         // Use regular execution for other languages (stateless)
@@ -127,19 +155,36 @@ export const ExecutableCodeBlockComponent = ({ node, updateAttributes }: NodeVie
 
         // Show success toast for successful execution
         if (result.exitCode === 0 && !result.error) {
+          setExecutionFeedback('success');
           toast.success('Code executed successfully', { duration: 4000 });
+        } else {
+          setExecutionFeedback('error');
         }
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Execution failed';
 
+      // Detect common error types for better messaging
+      const isServerError = errorMessage.includes('500') || errorMessage.includes('Internal Server');
+      const isNetworkError = errorMessage.includes('Failed to fetch') || errorMessage.includes('NetworkError');
+      const isTimeoutError = errorMessage.includes('timeout') || errorMessage.includes('Timeout');
+
+      let userFriendlyMessage = errorMessage;
+      if (isServerError) {
+        userFriendlyMessage = 'Server temporarily unavailable. The sandbox may be initializing - please try again in a moment.';
+      } else if (isNetworkError) {
+        userFriendlyMessage = 'Network error. Check your connection and try again.';
+      } else if (isTimeoutError) {
+        userFriendlyMessage = 'Execution timed out. Try breaking your code into smaller parts.';
+      }
+
       // For Python, create Jupyter error output
       if (language === 'python') {
         const jupyterError: JupyterOutput[] = [{
           output_type: 'error',
-          ename: 'ExecutionError',
-          evalue: errorMessage,
-          traceback: [errorMessage]
+          ename: isServerError ? 'ServerError' : isNetworkError ? 'NetworkError' : isTimeoutError ? 'TimeoutError' : 'ExecutionError',
+          evalue: userFriendlyMessage,
+          traceback: [userFriendlyMessage]
         }];
 
         updateAttributes({
@@ -171,6 +216,8 @@ export const ExecutableCodeBlockComponent = ({ node, updateAttributes }: NodeVie
         exitCode: 1,
         hadError: true,
       });
+
+      setExecutionFeedback('error');
     } finally {
       setIsExecuting(false);
     }
@@ -206,7 +253,12 @@ export const ExecutableCodeBlockComponent = ({ node, updateAttributes }: NodeVie
 
   return (
     <NodeViewWrapper className="executable-code-block not-prose my-8 max-w-4xl mx-auto group" data-type="executable-code-block">
-      <div className="relative border border-stone-200/60 dark:border-stone-700/50 rounded-xl overflow-hidden bg-white/95 dark:bg-stone-900/95 backdrop-blur-sm transition-all duration-200 hover:border-blue-500/60 dark:hover:border-blue-500/60 shadow-elevation-2 hover:shadow-elevation-3">
+      <m.div
+        className="relative rounded-xl overflow-hidden glass-surface transition-shadow duration-moderate hover:shadow-elevation-3"
+        variants={enhancedExecutionVariants}
+        initial="idle"
+        animate={executionFeedback}
+      >
         {/* Inner glow overlay for glass depth */}
         <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-white/30 via-transparent to-transparent dark:from-white/5 pointer-events-none" aria-hidden="true" />
 
@@ -215,18 +267,24 @@ export const ExecutableCodeBlockComponent = ({ node, updateAttributes }: NodeVie
           {/* Language Selector */}
           <div className="relative">
             <div className="flex items-center gap-2">
-              {/* Execution Counter Badge */}
+              {/* Execution Counter Badge with pop animation */}
               {language === 'python' && (
-                <span
-                  className={`text-xs font-mono px-2 py-0.5 rounded ${
-                    executionCount
-                      ? "text-stone-600 dark:text-stone-300 bg-stone-200/50 dark:bg-stone-700/50"
-                      : "text-stone-400 dark:text-stone-500 bg-stone-100 dark:bg-stone-800/50"
-                  }`}
-                  title={executionCount ? `Execution #${executionCount}` : "Not yet executed"}
-                >
-                  [{executionCount ?? '·'}]
-                </span>
+                <AnimatePresence mode="wait">
+                  <m.span
+                    key={countAnimationKey}
+                    variants={executionCountVariants}
+                    initial="initial"
+                    animate={countAnimationKey > 0 ? "update" : "initial"}
+                    className={`text-xs font-mono px-2 py-0.5 rounded ${
+                      executionCount
+                        ? "text-stone-600 dark:text-stone-300 bg-stone-200/50 dark:bg-stone-700/50"
+                        : "text-stone-400 dark:text-stone-500 bg-stone-100 dark:bg-stone-800/50"
+                    }`}
+                    title={executionCount ? `Execution #${executionCount}` : "Not yet executed"}
+                  >
+                    [{executionCount ?? '·'}]
+                  </m.span>
+                </AnimatePresence>
               )}
               <LanguageIcon language={language} size={20} className="text-emerald-400 flex-shrink-0" />
               <select
@@ -462,7 +520,7 @@ export const ExecutableCodeBlockComponent = ({ node, updateAttributes }: NodeVie
             )}
           </div>
         )}
-      </div>
+      </m.div>
     </NodeViewWrapper>
   );
 };

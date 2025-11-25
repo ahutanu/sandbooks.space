@@ -36,7 +36,19 @@ export const SyncPushSchema = z.object({
       color: z.string(),
     })).optional(),
     isSystemDoc: z.boolean().optional(),
+    folderId: z.string().nullable().optional(),
   })),
+  folders: z.array(z.object({
+    id: z.string(),
+    name: z.string(),
+    parentId: z.string().nullable(),
+    sortOrder: z.number(),
+    color: z.string().optional(),
+    icon: z.string().optional(),
+    createdAt: z.string(),
+    updatedAt: z.string(),
+  })).optional(),
+  deletedFolderIds: z.array(z.string()).optional(),
   message: z.string().optional(),
 });
 
@@ -105,7 +117,21 @@ export interface SyncPullResponse {
     updatedAt: string;
     tags?: Array<{ id: string; name: string; color: string }>;
     isSystemDoc?: boolean;
+    folderId?: string | null;
+    folderPath?: string | null;
   }>;
+  folders?: Array<{
+    id: string;
+    name: string;
+    parentId: string | null;
+    path: string;
+    sortOrder: number;
+    color?: string;
+    icon?: string;
+    createdAt: string;
+    updatedAt: string;
+  }>;
+  deletedFolderIds?: string[];
   sha: string;
   syncedAt: string;
 }

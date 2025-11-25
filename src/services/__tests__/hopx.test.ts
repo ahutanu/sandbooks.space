@@ -30,10 +30,15 @@ describe('HopxService', () => {
         expect(result.stdout).toBe('Hello');
         expect(result.exitCode).toBe(0);
         expect(result.sandboxStatus).toBe('healthy');
-        expect(fetchWithTimeout).toHaveBeenCalledWith(expect.stringContaining('/api/execute'), expect.objectContaining({
-            method: 'POST',
-            body: JSON.stringify({ code: 'print("Hello")', language: 'python' })
-        }));
+        // fetchWithTimeout is called with (url, options, timeout)
+        expect(fetchWithTimeout).toHaveBeenCalledWith(
+            expect.stringContaining('/api/execute'),
+            expect.objectContaining({
+                method: 'POST',
+                body: JSON.stringify({ code: 'print("Hello")', language: 'python' })
+            }),
+            expect.any(Number) // timeout
+        );
     });
 
     it('should handle API errors (non-200 response)', async () => {

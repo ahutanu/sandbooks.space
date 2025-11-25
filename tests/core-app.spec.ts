@@ -20,8 +20,8 @@ test.describe('Core Application Flow', () => {
 
   test('loads and shows primary actions', async ({ page }) => {
     await expect(page).toHaveTitle('Sandbooks - Executable Notes for Developers');
-    // Header shows "dev" badge (compact design)
-    await expect(page.getByText('dev')).toBeVisible();
+    // Header shows "Sandbooks" title (clean design)
+    await expect(page.getByRole('heading', { name: 'Sandbooks' })).toBeVisible();
     await expect(page.getByLabel(/Create new note/i)).toBeVisible();
     // Verify header has action buttons (dark mode, terminal, new note)
     const header = page.locator('header');

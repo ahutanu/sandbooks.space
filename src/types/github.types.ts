@@ -45,7 +45,21 @@ export interface GitHubPullResult {
     updatedAt: string;
     tags?: Array<{ id: string; name: string; color: string }>;
     isSystemDoc?: boolean;
+    folderId?: string | null;
+    folderPath?: string | null;
   }>;
+  folders?: Array<{
+    id: string;
+    name: string;
+    parentId: string | null;
+    path: string;
+    sortOrder: number;
+    color?: string;
+    icon?: string;
+    createdAt: string;
+    updatedAt: string;
+  }>;
+  deletedFolderIds?: string[];
   sha: string;
   syncedAt: string;
 }

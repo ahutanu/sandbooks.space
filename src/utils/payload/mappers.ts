@@ -365,8 +365,10 @@ export function payloadToInlines(inlines: PayloadInline[]): JSONContent[] {
 
   for (const inline of inlines) {
     if (typeof inline === 'string') {
-      // Plain text
-      result.push({ type: 'text', text: inline });
+      // Plain text - skip empty strings (ProseMirror doesn't allow empty text nodes)
+      if (inline) {
+        result.push({ type: 'text', text: inline });
+      }
     } else if (Array.isArray(inline)) {
       const inlineType = inline[0] as InlineType;
 
@@ -409,11 +411,14 @@ export function payloadToInlines(inlines: PayloadInline[]): JSONContent[] {
 
         case InlineType.Code: {
           const text = inline[1] as string;
-          result.push({
-            type: 'text',
-            text,
-            marks: [{ type: 'code' }],
-          });
+          // Skip empty code text (ProseMirror doesn't allow empty text nodes)
+          if (text) {
+            result.push({
+              type: 'text',
+              text,
+              marks: [{ type: 'code' }],
+            });
+          }
           break;
         }
 

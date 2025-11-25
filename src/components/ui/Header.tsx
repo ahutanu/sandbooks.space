@@ -2,6 +2,7 @@ import { useNotesStore, createNewNote } from '../../store/notesStore';
 import clsx from 'clsx';
 import { Logo } from './Logo';
 import { SyncStatusIcon } from './SyncStatusIcon';
+import { StatusBadge } from './StatusBadge';
 import { Button } from './Button';
 import { Tooltip } from './Tooltip';
 import { GitHubConnect } from '../GitHub';
@@ -24,7 +25,16 @@ export const Header = ({ onToggleMobileSidebar }: HeaderProps) => {
 
   return (
     <header
-      className="sticky top-0 z-50 bg-white dark:bg-stone-900 border-b border-stone-200 dark:border-stone-800 px-3 md:px-4 py-2 flex items-center justify-between shadow-elevation-1 transition-all duration-200"
+      className={clsx(
+        "sticky top-0 z-50 px-3 md:px-4 py-2 flex items-center justify-between transition-all duration-200",
+        // Glass morphism
+        "bg-white/90 dark:bg-stone-900/90",
+        "backdrop-blur-xl",
+        "border-b border-stone-200/40 dark:border-stone-700/40",
+        // Inner highlight for glass depth
+        "shadow-[inset_0_-1px_0_rgba(255,255,255,0.1),0_1px_2px_rgba(0,0,0,0.05)]",
+        "dark:shadow-[inset_0_-1px_0_rgba(255,255,255,0.03),0_1px_2px_rgba(0,0,0,0.2)]"
+      )}
       style={{ paddingTop: 'max(0.5rem, env(safe-area-inset-top))' }}
     >
       {/* Left section: Sidebar toggle + Logo + Title */}
@@ -65,18 +75,8 @@ export const Header = ({ onToggleMobileSidebar }: HeaderProps) => {
           <h1 className="text-lg md:text-xl font-semibold text-stone-900 dark:text-stone-50 tracking-tight truncate">
             Sandbooks
           </h1>
-          <span className="hidden sm:inline text-xs font-medium text-stone-500 dark:text-stone-400 bg-stone-100 dark:bg-stone-800 px-1.5 py-0.5 rounded flex-shrink-0">
-            dev
-          </span>
+          <StatusBadge className="hidden sm:inline-flex" />
         </div>
-
-        {/* Note count - compact pill */}
-        {notes.length > 0 && (
-          <span className="hidden sm:flex items-center text-xs text-stone-400 dark:text-stone-500 flex-shrink-0">
-            <span className="w-px h-4 bg-stone-200 dark:bg-stone-700 mr-2" />
-            {notes.length}
-          </span>
-        )}
       </div>
 
       {/* Right section: Controls */}

@@ -147,7 +147,8 @@ describe('ExecutableCodeBlockComponent', () => {
         );
 
         expect(screen.getByText('Hello World')).toBeInTheDocument();
-        expect(screen.getByText('Executed in 100ms')).toBeInTheDocument();
+        // Execution time is displayed as "{time}ms"
+        expect(screen.getByText('100ms')).toBeInTheDocument();
     });
 
     it('handles language change', () => {
@@ -628,6 +629,7 @@ describe('ExecutableCodeBlockComponent', () => {
             />
         );
 
-        expect(screen.getByText('Executed in 150ms')).toBeInTheDocument();
+        // Execution time is displayed as "{time}ms"
+        expect(screen.getByText('150ms')).toBeInTheDocument();
     });
 });

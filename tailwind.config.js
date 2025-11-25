@@ -105,15 +105,26 @@ module.exports = {
         'loose': '1.8',      // Extra spacing
       },
       transitionDuration: {
+        // Liquid Glass Motion Scale
+        'instant': '75ms',     // Focus rings, icon swaps
+        'fast': '100ms',       // Menu item hovers
+        'normal': '150ms',     // Button states
+        'moderate': '200ms',   // Dropdowns, popovers
+        'slow': '300ms',       // Modals, panels
+        'deliberate': '400ms', // Full-screen transitions
+        // Legacy numeric (keep for compatibility)
         '150': '150ms',
         '200': '200ms',
         '300': '300ms',
       },
       transitionTimingFunction: {
-        // Professional spring physics (replaces linear cubic-bezier)
+        // Fluid interface curves
         'spring': 'cubic-bezier(0.34, 1.56, 0.64, 1)',      // Gentle bounce - feels organic
         'spring-snappy': 'cubic-bezier(0.5, 1.8, 0.9, 0.8)', // Pronounced bounce
         'smooth': 'cubic-bezier(0.25, 0.46, 0.45, 0.94)',   // Smooth deceleration
+        'out-expo': 'cubic-bezier(0.16, 1, 0.3, 1)',        // Elegant deceleration for enters
+        'in-expo': 'cubic-bezier(0.4, 0, 1, 1)',            // Quick exit acceleration
+        'bounce': 'cubic-bezier(0.34, 1.8, 0.64, 1)',       // Success feedback
         // Legacy (keep for compatibility)
         'out': 'cubic-bezier(0, 0, 0.2, 1)',
         'in-out': 'cubic-bezier(0.4, 0, 0.2, 1)',

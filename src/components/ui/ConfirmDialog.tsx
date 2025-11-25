@@ -1,5 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react';
+import { AnimatePresence, m } from 'framer-motion';
 import clsx from 'clsx';
+import { glassPanelVariants, backdropVariants } from '../../utils/animationVariants';
 
 interface ConfirmDialogProps {
   isOpen: boolean;
@@ -76,8 +78,6 @@ export const ConfirmDialog = ({
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [handleKeyDown]);
 
-  if (!isOpen) return null;
-
   const variantStyles = {
     danger: {
       icon: (
@@ -108,83 +108,94 @@ export const ConfirmDialog = ({
   const styles = variantStyles[variant];
 
   return (
-    <div
-      className="fixed inset-0 z-[100] flex items-center justify-center"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="confirm-dialog-title"
-      aria-describedby="confirm-dialog-message"
-    >
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-fadeIn"
-        onClick={onCancel}
-        aria-hidden="true"
-      />
-
-      {/* Dialog */}
-      <div
-        ref={dialogRef}
-        className={clsx(
-          'relative rounded-xl shadow-elevation-5',
-          // Glass morphism
-          'backdrop-blur-xl bg-white/90 dark:bg-stone-900/90',
-          'border border-stone-200/40 dark:border-stone-700/40',
-          'w-full max-w-sm mx-4 p-6',
-          'animate-scaleIn',
-          'motion-reduce:animate-none'
-        )}
-      >
-        {/* Inner glow overlay for glass depth */}
-        <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-white/40 via-transparent to-transparent dark:from-white/5 pointer-events-none" aria-hidden="true" />
-        {/* Icon and content */}
-        <div className="flex gap-4">
-          <div className="flex-shrink-0">{styles.icon}</div>
-          <div className="flex-1 min-w-0">
-            <h2
-              id="confirm-dialog-title"
-              className="text-base font-semibold text-stone-900 dark:text-stone-100"
-            >
-              {title}
-            </h2>
-            <p
-              id="confirm-dialog-message"
-              className="mt-2 text-sm text-stone-600 dark:text-stone-400"
-            >
-              {message}
-            </p>
-          </div>
-        </div>
-
-        {/* Actions */}
-        <div className="mt-6 flex gap-3 justify-end">
-          <button
+    <AnimatePresence>
+      {isOpen && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="confirm-dialog-title"
+          aria-describedby="confirm-dialog-message"
+        >
+          {/* Backdrop with Framer Motion */}
+          <m.div
+            className="absolute inset-0 glass-scrim"
+            variants={backdropVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
             onClick={onCancel}
+            aria-hidden="true"
+          />
+
+          {/* Dialog with glass panel animation */}
+          <m.div
+            ref={dialogRef}
             className={clsx(
-              'px-4 py-2 text-sm font-medium rounded-lg',
-              'text-stone-700 dark:text-stone-300',
-              'bg-stone-100 dark:bg-stone-800',
-              'hover:bg-stone-200 dark:hover:bg-stone-700',
-              'focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-blue-600 focus-visible:ring-offset-2',
-              'transition-colors duration-150'
+              'relative rounded-xl',
+              // Use Liquid Glass overlay class for modals
+              'glass-overlay',
+              'w-full max-w-sm mx-4 p-6'
             )}
+            variants={glassPanelVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
           >
-            {cancelLabel}
-          </button>
-          <button
-            ref={confirmButtonRef}
-            onClick={onConfirm}
-            className={clsx(
-              'px-4 py-2 text-sm font-medium rounded-lg',
-              'focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-offset-2',
-              'transition-colors duration-150',
-              styles.confirmButton
-            )}
-          >
-            {confirmLabel}
-          </button>
+            {/* Inner glow overlay for glass depth */}
+            <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-white/40 via-transparent to-transparent dark:from-white/5 pointer-events-none" aria-hidden="true" />
+            {/* Icon and content */}
+            <div className="relative flex gap-4">
+              <div className="flex-shrink-0">{styles.icon}</div>
+              <div className="flex-1 min-w-0">
+                <h2
+                  id="confirm-dialog-title"
+                  className="text-base font-semibold text-stone-900 dark:text-stone-100"
+                >
+                  {title}
+                </h2>
+                <p
+                  id="confirm-dialog-message"
+                  className="mt-2 text-sm text-stone-600 dark:text-stone-400"
+                >
+                  {message}
+                </p>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="relative mt-6 flex gap-3 justify-end">
+              <m.button
+                onClick={onCancel}
+                className={clsx(
+                  'px-4 py-2 text-sm font-medium rounded-lg',
+                  'text-stone-700 dark:text-stone-300',
+                  'bg-stone-100 dark:bg-stone-800',
+                  'hover:bg-stone-200 dark:hover:bg-stone-700',
+                  'focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-blue-600 focus-visible:ring-offset-2',
+                  'transition-colors duration-fast'
+                )}
+                whileTap={{ scale: 0.97 }}
+              >
+                {cancelLabel}
+              </m.button>
+              <m.button
+                ref={confirmButtonRef}
+                onClick={onConfirm}
+                className={clsx(
+                  'px-4 py-2 text-sm font-medium rounded-lg',
+                  'focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-offset-2',
+                  'transition-colors duration-fast',
+                  styles.confirmButton
+                )}
+                whileTap={{ scale: 0.97 }}
+              >
+                {confirmLabel}
+              </m.button>
+            </div>
+          </m.div>
         </div>
-      </div>
-    </div>
+      )}
+    </AnimatePresence>
   );
 };

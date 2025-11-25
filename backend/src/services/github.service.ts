@@ -516,7 +516,8 @@ class GitHubService {
     updatedAt: string;
     tags?: Array<{ name: string }>;
     isSystemDoc?: boolean;
-  }): string {
+    folderId?: string | null;
+  }, folderPath?: string | null): string {
     // Build frontmatter
     const frontmatter: Record<string, unknown> = {
       id: note.id,
@@ -531,6 +532,14 @@ class GitHubService {
 
     if (note.isSystemDoc) {
       frontmatter.isSystemDoc = true;
+    }
+
+    // Add folder information
+    if (note.folderId) {
+      frontmatter.folderId = note.folderId;
+    }
+    if (folderPath) {
+      frontmatter.folderPath = folderPath;
     }
 
     // Convert JSONContent to markdown (simplified)
@@ -560,6 +569,8 @@ class GitHubService {
     updatedAt: string;
     tags?: Array<{ id: string; name: string; color: string }>;
     isSystemDoc?: boolean;
+    folderId?: string | null;
+    folderPath?: string | null;
   } | null {
     // Extract frontmatter
     const frontmatterMatch = markdown.match(/^---\n([\s\S]*?)\n---\n\n?([\s\S]*)$/);
@@ -617,6 +628,8 @@ class GitHubService {
     const updatedAt = (frontmatter.updatedAt as string) || new Date().toISOString();
     const tagNames = (frontmatter.tags as string[]) || [];
     const isSystemDoc = frontmatter.isSystemDoc === true;
+    const folderId = (frontmatter.folderId as string) || null;
+    const folderPath = (frontmatter.folderPath as string) || null;
 
     // Convert markdown body to JSONContent
     const content = this.markdownToJsonContent(body);
@@ -636,6 +649,8 @@ class GitHubService {
       updatedAt,
       tags: tags.length > 0 ? tags : undefined,
       isSystemDoc: isSystemDoc || undefined,
+      folderId: folderId || undefined,
+      folderPath: folderPath || undefined,
     };
   }
 
@@ -786,6 +801,39 @@ class GitHubService {
   }
 
   /**
+   * Build folder path map from folder array
+   */
+  private buildFolderPathMap(folders: Array<{
+    id: string;
+    name: string;
+    parentId: string | null;
+  }>): Map<string, string> {
+    const pathMap = new Map<string, string>();
+    const folderById = new Map(folders.map(f => [f.id, f]));
+
+    const computePath = (folderId: string): string => {
+      if (pathMap.has(folderId)) return pathMap.get(folderId)!;
+
+      const folder = folderById.get(folderId);
+      if (!folder) return '';
+
+      if (!folder.parentId) {
+        const path = slugify(folder.name);
+        pathMap.set(folderId, path);
+        return path;
+      }
+
+      const parentPath = computePath(folder.parentId);
+      const path = parentPath ? `${parentPath}/${slugify(folder.name)}` : slugify(folder.name);
+      pathMap.set(folderId, path);
+      return path;
+    };
+
+    folders.forEach(f => computePath(f.id));
+    return pathMap;
+  }
+
+  /**
    * Push notes to GitHub repository
    */
   async pushNotes(
@@ -800,10 +848,30 @@ class GitHubService {
       updatedAt: string;
       tags?: Array<{ id: string; name: string; color: string }>;
       isSystemDoc?: boolean;
+      folderId?: string | null;
     }>,
-    message?: string
+    message?: string,
+    folders?: Array<{
+      id: string;
+      name: string;
+      parentId: string | null;
+      sortOrder: number;
+      color?: string;
+      icon?: string;
+      createdAt?: string;
+      updatedAt?: string;
+    }>,
+    deletedFolderIds?: string[]
   ): Promise<SyncPushResponse> {
-    logger.info('Pushing notes to GitHub', { repo, path, noteCount: notes.length });
+    logger.info('Pushing notes to GitHub', {
+      repo,
+      path,
+      noteCount: notes.length,
+      folderCount: folders?.length || 0,
+    });
+
+    // Build folder path map
+    const folderPathMap = folders ? this.buildFolderPathMap(folders) : new Map<string, string>();
 
     // Get existing files and build map by note ID (from frontmatter)
     const existingFiles = await this.getContents(token, repo, `${path}/notes`);
@@ -843,7 +911,10 @@ class GitHubService {
       usedSlugs.add(baseSlug);
 
       const filePath = `${path}/notes/${filename}`;
-      const markdown = this.noteToMarkdown(note);
+
+      // Get folder path for the note
+      const folderPath = note.folderId ? folderPathMap.get(note.folderId) : null;
+      const markdown = this.noteToMarkdown(note, folderPath);
 
       // Check if this note exists under a different filename (renamed)
       const existingEntry = existingById.get(note.id);
@@ -910,6 +981,47 @@ class GitHubService {
       }
     }
 
+    // Save folder metadata as .folders.json
+    if (folders && folders.length > 0) {
+      const foldersJson = JSON.stringify({
+        folders: folders.map(f => ({
+          id: f.id,
+          name: f.name,
+          parentId: f.parentId,
+          sortOrder: f.sortOrder,
+          color: f.color,
+          icon: f.icon,
+          createdAt: f.createdAt || new Date().toISOString(),
+          updatedAt: f.updatedAt || new Date().toISOString(),
+        })),
+        deletedFolderIds: deletedFolderIds || [],
+      }, null, 2);
+      const foldersPath = `${path}/.folders.json`;
+
+      try {
+        // Try to get existing .folders.json for SHA
+        let existingSha: string | undefined;
+        try {
+          const existing = await this.getFileContent(token, repo, foldersPath);
+          existingSha = existing.sha;
+        } catch {
+          // File doesn't exist yet
+        }
+
+        await this.createOrUpdateFile(
+          token,
+          repo,
+          foldersPath,
+          foldersJson,
+          message || 'sandbooks: update folder structure',
+          existingSha
+        );
+        logger.info('Saved folder metadata to GitHub', { folderCount: folders.length });
+      } catch (err) {
+        logger.warn('Failed to save folder metadata', { error: getErrorMessage(err) });
+      }
+    }
+
     return {
       success: true,
       sha: lastSha,
@@ -929,6 +1041,72 @@ class GitHubService {
     path: string
   ): Promise<SyncPullResponse> {
     logger.info('Pulling notes from GitHub', { repo, path });
+
+    // Try to load folder metadata from .folders.json
+    let folders: SyncPullResponse['folders'] = [];
+    let deletedFolderIds: string[] = [];
+    try {
+      const { content: foldersJson } = await this.getFileContent(token, repo, `${path}/.folders.json`);
+      const parsed = JSON.parse(foldersJson) as {
+        folders?: Array<{
+          id: string;
+          name: string;
+          parentId: string | null;
+          sortOrder: number;
+          color?: string;
+          icon?: string;
+          createdAt?: string;
+          updatedAt?: string;
+        }>;
+        deletedFolderIds?: string[];
+      } | Array<{
+        id: string;
+        name: string;
+        parentId: string | null;
+        sortOrder: number;
+        color?: string;
+        icon?: string;
+        createdAt?: string;
+        updatedAt?: string;
+      }>;
+
+      // Support both new format { folders: [...], deletedFolderIds: [...] }
+      // and legacy format [...] (direct array)
+      const parsedFolders = Array.isArray(parsed) ? parsed : (parsed.folders || []);
+      deletedFolderIds = Array.isArray(parsed) ? [] : (parsed.deletedFolderIds || []);
+
+      // Validate folder hierarchy for cycles
+      this.validateFolderHierarchy(parsedFolders);
+
+      // Build path map for folders
+      const pathMap = this.buildFolderPathMap(parsedFolders);
+      const now = new Date().toISOString();
+
+      folders = parsedFolders.map(f => ({
+        id: f.id,
+        name: f.name,
+        parentId: f.parentId,
+        path: pathMap.get(f.id) || '',
+        sortOrder: f.sortOrder,
+        color: f.color,
+        icon: f.icon,
+        createdAt: f.createdAt || now,
+        updatedAt: f.updatedAt || now,
+      }));
+
+      logger.info('Loaded folder metadata from GitHub', {
+        folderCount: folders.length,
+        deletedCount: deletedFolderIds.length,
+      });
+    } catch (err) {
+      // No folder metadata found or parse error - that's ok
+      const errorMsg = getErrorMessage(err);
+      if (errorMsg.includes('Circular folder reference')) {
+        logger.error('Invalid folder hierarchy in GitHub', { error: errorMsg });
+        throw new Error(`GitHub sync failed: ${errorMsg}`);
+      }
+      logger.debug('No folder metadata found in GitHub repo');
+    }
 
     // Get list of files
     const files = await this.getContents(token, repo, `${path}/notes`);
@@ -951,13 +1129,44 @@ class GitHubService {
       }
     }
 
-    logger.info('Pulled notes from GitHub', { count: notes.length });
+    logger.info('Pulled notes from GitHub', { noteCount: notes.length, folderCount: folders.length });
 
     return {
       notes,
+      folders: folders.length > 0 ? folders : undefined,
+      deletedFolderIds: deletedFolderIds.length > 0 ? deletedFolderIds : undefined,
       sha: mdFiles[0]?.sha || '',
       syncedAt: new Date().toISOString(),
     };
+  }
+
+  /**
+   * Validate folder hierarchy for circular references
+   */
+  private validateFolderHierarchy(folders: Array<{ id: string; parentId: string | null }>): void {
+    const visited = new Set<string>();
+    const visiting = new Set<string>();
+    const folderById = new Map(folders.map(f => [f.id, f]));
+
+    const detectCycle = (id: string): boolean => {
+      if (visiting.has(id)) return true; // Cycle detected
+      if (visited.has(id)) return false;
+
+      visiting.add(id);
+      const folder = folderById.get(id);
+      if (folder?.parentId && folderById.has(folder.parentId)) {
+        if (detectCycle(folder.parentId)) return true;
+      }
+      visiting.delete(id);
+      visited.add(id);
+      return false;
+    };
+
+    for (const folder of folders) {
+      if (detectCycle(folder.id)) {
+        throw new Error(`Circular folder reference detected: ${folder.id}`);
+      }
+    }
   }
 
   /**

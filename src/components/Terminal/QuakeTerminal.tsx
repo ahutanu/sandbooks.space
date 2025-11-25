@@ -6,12 +6,14 @@
  */
 
 import { useEffect, useState, useCallback } from 'react';
+import { AnimatePresence, m } from 'framer-motion';
 import { useNotesStore } from '../../store/notesStore';
 import { executionModeManager } from '../../services/execution/executionModeManager';
 import { TerminalHeader } from './TerminalHeader';
 import { TerminalEmulator } from './TerminalEmulator';
 import { TerminalFooter } from './TerminalFooter';
 import type { TerminalSessionState } from '../../types/terminal';
+import { quakeTerminalVariants, backdropVariants } from '../../utils/animationVariants';
 
 export function QuakeTerminal() {
   const {
@@ -21,18 +23,11 @@ export function QuakeTerminal() {
     setTerminalHeight,
     globalTerminalSessionId,
     globalTerminalStatus,
-    // setGlobalTerminalStatus removed - using getState() to prevent re-render cascade
   } = useNotesStore();
-
-  const [isAnimating, setIsAnimating] = useState(false);
 
   // Close terminal
   const handleClose = useCallback(() => {
-    setIsAnimating(true);
-    setTimeout(() => {
-      toggleTerminal();
-      setIsAnimating(false);
-    }, 300); // Match animation duration
+    toggleTerminal();
   }, [toggleTerminal]);
 
   // Handle keyboard shortcuts
@@ -168,98 +163,101 @@ export function QuakeTerminal() {
     [terminalHeight, setTerminalHeight]
   );
 
-  // Don't render backdrop if not open
-  // if (!isTerminalOpen) return null; <-- Removed to keep terminal mounted
-
   return (
-    <>
-      {/* Backdrop overlay with glass blur */}
+    <AnimatePresence>
       {isTerminalOpen && (
-        <div
-          className={`fixed inset-0 bg-black/20 backdrop-blur-sm transition-opacity duration-300 ${isAnimating ? 'opacity-0' : 'opacity-100'
-            }`}
-          style={{
-            zIndex: 50, // Backdrop below terminal (z-index: 60)
-          }}
-          onClick={handleClose}
-          aria-hidden="true"
-        />
-      )}
-
-      {/* Terminal container - Always mounted to preserve state/connection */}
-      <div
-        className={`fixed left-0 right-0 shadow-elevation-4 transition-transform duration-300 ease-out ${!isTerminalOpen || isAnimating ? '-translate-y-full' : 'translate-y-0'
-          }`}
-        style={{
-          top: 0,
-          height: `${terminalHeight}px`,
-          zIndex: 60, // Terminal always on top (higher than z-50 modals)
-        }}
-      >
-        {/* Solid background for terminal visibility */}
-        <div className="absolute inset-0 bg-white dark:bg-stone-900" />
-
-        {/* Terminal content */}
-        <div className="relative flex flex-col h-full overflow-hidden rounded-b-xl border-b border-stone-200 dark:border-stone-800" style={{ width: '100%', maxWidth: '100vw', overflowX: 'hidden' }}>
-          {/* Header */}
-          <TerminalHeader
-            status={globalTerminalStatus}
-            latency={latency}
-            shell={sessionInfo.shell}
-            workingDir={sessionInfo.workingDir}
-            onClose={handleClose}
-            onResize={handleResize}
+        <>
+          {/* Backdrop overlay with glass blur */}
+          <m.div
+            className="fixed inset-0 glass-scrim"
+            style={{ zIndex: 50 }}
+            onClick={handleClose}
+            aria-hidden="true"
+            variants={backdropVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
           />
 
-          {/* Terminal emulator */}
-          {globalTerminalSessionId ? (
-            <TerminalEmulator
-              sessionId={globalTerminalSessionId}
-              noteId="global" // Global session (not tied to note)
-              onStatusChange={handleStatusChange}
-              onLatencyUpdate={handleLatencyUpdate}
-              onError={handleError}
-              onSessionInfo={setSessionInfo}
-            />
-          ) : (
-            <div className="flex-1 flex items-center justify-center text-stone-500 dark:text-stone-400" style={{ width: '100%', maxWidth: '100%' }}>
-              <div className="text-center">
-                <svg
-                  className="w-12 h-12 mx-auto mb-4 text-stone-400 dark:text-stone-600 animate-spin"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                  />
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                  />
-                </svg>
-                <p className="text-sm">Connecting to terminal...</p>
-                {errorMessage && (
-                  <p className="text-xs text-red-600 dark:text-red-400 mt-2">
-                    {errorMessage}
-                  </p>
-                )}
-              </div>
+          {/* Terminal container with spring animation */}
+          <m.div
+            className="fixed left-0 right-0"
+            style={{
+              top: 0,
+              height: `${terminalHeight}px`,
+              zIndex: 60,
+            }}
+            variants={quakeTerminalVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+          >
+            {/* Use glass-overlay class for terminal surface */}
+            <div className="absolute inset-0 glass-overlay rounded-b-xl" />
+
+            {/* Terminal content */}
+            <div className="relative flex flex-col h-full overflow-hidden rounded-b-xl border-b border-stone-200 dark:border-stone-800" style={{ width: '100%', maxWidth: '100vw', overflowX: 'hidden' }}>
+              {/* Header */}
+              <TerminalHeader
+                status={globalTerminalStatus}
+                latency={latency}
+                shell={sessionInfo.shell}
+                workingDir={sessionInfo.workingDir}
+                onClose={handleClose}
+                onResize={handleResize}
+              />
+
+              {/* Terminal emulator */}
+              {globalTerminalSessionId ? (
+                <TerminalEmulator
+                  sessionId={globalTerminalSessionId}
+                  noteId="global" // Global session (not tied to note)
+                  onStatusChange={handleStatusChange}
+                  onLatencyUpdate={handleLatencyUpdate}
+                  onError={handleError}
+                  onSessionInfo={setSessionInfo}
+                />
+              ) : (
+                <div className="flex-1 flex items-center justify-center text-stone-500 dark:text-stone-400 bg-white dark:bg-stone-900" style={{ width: '100%', maxWidth: '100%' }}>
+                  <div className="text-center">
+                    <svg
+                      className="w-12 h-12 mx-auto mb-4 text-stone-400 dark:text-stone-600 animate-spin"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      />
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      />
+                    </svg>
+                    <p className="text-sm">Connecting to terminal...</p>
+                    {errorMessage && (
+                      <p className="text-xs text-red-600 dark:text-red-400 mt-2">
+                        {errorMessage}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Mobile virtual keyboard */}
+              <TerminalFooter
+                onCommand={handleCommand}
+                isConnected={globalTerminalStatus === 'connected'}
+              />
             </div>
-          )}
-
-          {/* Mobile virtual keyboard */}
-          <TerminalFooter
-            onCommand={handleCommand}
-            isConnected={globalTerminalStatus === 'connected'}
-          />
-        </div>
-      </div>
-    </>
+          </m.div>
+        </>
+      )}
+    </AnimatePresence>
   );
 }
