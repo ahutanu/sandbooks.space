@@ -32,7 +32,7 @@
 
 ### Core Capabilities
 
-- 💻 **Executable Code Blocks**: Run Python, JavaScript, TypeScript, Bash, and Go directly in your notes
+- 💻 **Executable Code Blocks**: Run Python, JavaScript, TypeScript, Bash, and Go directly in your notes with unified code blocks, drag handles, and keyboard shortcuts (Cmd/Ctrl+Alt+C)
 - 📝 **Rich Text Editing**: TipTap v3-based editor with comprehensive formatting, tables, media embeds, and more
   - **Text Formatting**: Bold, Italic, Strike, Underline, Highlight, Text Color, Font Family/Size, Superscript/Subscript
   - **Layout**: Text Alignment (Left/Center/Right/Justify), Tables with full editing, Multi-column layouts
@@ -46,7 +46,8 @@
 - ♿ **Accessibility**: WCAG 2.1 AA compliant (keyboard navigation, screen reader support)
 - 💾 **Local-First**: Notes stored in browser localStorage with export/import
 - ☁️ **Cloud Execution**: Secure sandboxed execution via [Hopx SDK](https://hopx.ai)
-- 🖥️ **Integrated Terminal**: Quake-style terminal with persistent sessions
+- 🖥️ **Integrated Terminal**: Cloud-only terminal with persistent per-session sandboxes, full special-key support (Tab, F-keys, Ctrl combos), and backend-powered echo/line editing
+- 📓 **Jupyter Notebook Import**: Upload `.ipynb` files to render markdown, code, raw cells, and outputs (text, images, HTML) directly inside Sandbooks
 - 🏷️ **Tag System**: Color-coded tags with search integration
 - 🎨 **Glass Morphism**: Modern UI with backdrop blur effects
 
@@ -119,6 +120,13 @@ npm start
 1. **Import Markdown**: Click the Sync icon in the header -> "Import Markdown Note" to load existing `.md` files.
 2. **Local Sync**: Click "Open Folder" in the sidebar to sync your notes directly with a folder on your computer.
 3. **Export**: Click "Export Notes" in the Sync menu to download all notes as JSON.
+
+### Importing Jupyter Notebooks
+
+1. Click the **Notebook** toolbar and choose **"Import .ipynb"**
+2. Select a notebook file from your computer
+3. Sandbooks converts cells (code, markdown, raw) while preserving outputs (text, HTML, images)
+4. Notebook data is stored locally so you can reopen it instantly
 
 ### Keyboard Shortcuts
 
@@ -207,6 +215,11 @@ sandbooks/
 ├── tests/              # Playwright E2E tests
 └── test-results/       # Playwright artifacts
 ```
+
+### Notebook + Terminal Architecture
+
+- **Notebook Import**: Frontend `NotebookToolbar` triggers upload -> backend `notebook.controller.ts` parses `.ipynb` via kernel service -> cells converted to Sandbooks blocks -> stored locally with replayable outputs.
+- **Cloud Terminal**: Terminal emulator streams *all* keystrokes to the backend; echo, line editing, tab completion, and special keys are handled server-side in a dedicated sandbox per session.
 
 ---
 
