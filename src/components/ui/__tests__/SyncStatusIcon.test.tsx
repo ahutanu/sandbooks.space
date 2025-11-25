@@ -18,8 +18,11 @@ vi.mock('../../../store/notesStore', () => {
         activeNoteId: 'test-note',
         importMarkdownNote: vi.fn(),
     };
+    const useNotesStoreMock = vi.fn((selector) => selector ? selector(mockStore) : mockStore);
+    // Add getState for components that use useNotesStore.getState()
+    useNotesStoreMock.getState = () => mockStore;
     return {
-        useNotesStore: vi.fn((selector) => selector ? selector(mockStore) : mockStore),
+        useNotesStore: useNotesStoreMock,
     };
 });
 
@@ -63,16 +66,16 @@ describe('SyncStatusIcon Component', () => {
         const mockNotebook = { cells: [] };
         const mockNote = { id: 'new-note', title: 'notebook', content: '' };
 
-        (parseIpynb as jest.Mock).mockResolvedValue(mockNotebook);
-        (convertIpynbToNote as jest.Mock).mockReturnValue(mockNote);
+        (parseIpynb as ReturnType<typeof vi.fn>).mockResolvedValue(mockNotebook);
+        (convertIpynbToNote as ReturnType<typeof vi.fn>).mockReturnValue(mockNote);
 
-        render(<SyncStatusIcon />);
+        const { container } = render(<SyncStatusIcon />);
 
         // Open popover
         fireEvent.click(screen.getByLabelText(/Sync status/i));
 
-        // Find input and simulate change
-        const input = screen.getByLabelText('Import Jupyter Notebook').querySelector('input');
+        // Find the Jupyter notebook input by its accept attribute
+        const input = container.querySelector('input[accept=".ipynb"]');
         expect(input).toBeInTheDocument();
 
         if (input) {

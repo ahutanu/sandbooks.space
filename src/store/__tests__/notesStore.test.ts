@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { useNotesStore, createNewNote } from '../notesStore';
 import type { Note } from '../../types';
 import type { Tag } from '../../types/tags.types';
-import { executionModeManager } from '../../services/execution/executionModeManager';
 import { cloudTerminalProvider } from '../../services/terminal/index';
 
 // Mock all dependencies
@@ -166,12 +165,12 @@ describe('notesStore', () => {
   describe('createNewNote', () => {
     it('should create a new note with correct structure', () => {
       const note = createNewNote();
-      
+
       expect(note).toHaveProperty('id');
       expect(note).toHaveProperty('title', 'Untitled Note');
       expect(note).toHaveProperty('content');
       expect(note).toHaveProperty('tags', []);
-      expect(note).toHaveProperty('codeBlocks', []);
+      // codeBlocks removed - now using ExecutableCodeBlock TipTap nodes
       expect(note).toHaveProperty('createdAt');
       expect(note).toHaveProperty('updatedAt');
     });
@@ -628,90 +627,12 @@ describe('notesStore', () => {
     });
   });
 
-  describe('code block methods', () => {
-    it('should add code block to note', () => {
-      const note: Note = {
-        id: 'code-note',
-        title: 'Code Note',
-        content: { type: 'doc', content: [] },
-        tags: [],
-        codeBlocks: [],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-
-      useNotesStore.setState({ notes: [note] });
-      useNotesStore.getState().addCodeBlock(note.id, {
-        code: 'print("hello")',
-        language: 'python',
-      });
-
-      const updatedNote = useNotesStore.getState().notes.find(n => n.id === note.id);
-      expect(updatedNote?.codeBlocks?.length).toBe(1);
-      expect(updatedNote?.codeBlocks?.[0].code).toBe('print("hello")');
-    });
-
-    it('should update code block', () => {
-      const note: Note = {
-        id: 'code-note-2',
-        title: 'Code Note 2',
-        content: { type: 'doc', content: [] },
-        tags: [],
-        codeBlocks: [{ id: 'block-1', code: 'old', language: 'python', createdAt: Date.now(), updatedAt: Date.now() }],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-
-      useNotesStore.setState({ notes: [note] });
-      useNotesStore.getState().updateCodeBlock(note.id, 'block-1', { code: 'new' });
-
-      const updatedNote = useNotesStore.getState().notes.find(n => n.id === note.id);
-      expect(updatedNote?.codeBlocks?.[0].code).toBe('new');
-    });
-
-    it('should delete code block', () => {
-      const note: Note = {
-        id: 'code-note-3',
-        title: 'Code Note 3',
-        content: { type: 'doc', content: [] },
-        tags: [],
-        codeBlocks: [{ id: 'block-1', code: 'test', language: 'python', createdAt: Date.now(), updatedAt: Date.now() }],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-
-      useNotesStore.setState({ notes: [note] });
-      useNotesStore.getState().deleteCodeBlock(note.id, 'block-1');
-
-      const updatedNote = useNotesStore.getState().notes.find(n => n.id === note.id);
-      expect(updatedNote?.codeBlocks?.length).toBe(0);
-    });
-  });
+  // Code block management methods tests removed - now using ExecutableCodeBlock TipTap nodes
 
   describe('offline queue methods', () => {
     it('should set online status', () => {
       useNotesStore.getState().setIsOnline(false);
       expect(useNotesStore.getState().isOnline).toBe(false);
-    });
-
-    it('should queue code execution when offline', () => {
-      useNotesStore.setState({ isOnline: false });
-      useNotesStore.getState().queueCodeExecution('note-1', 'block-1', 'print("test")', 'python');
-
-      const queue = useNotesStore.getState().offlineQueue;
-      expect(queue.length).toBe(1);
-      expect(queue[0].code).toBe('print("test")');
-      expect(queue[0].language).toBe('python');
-    });
-
-    it('should persist queue to localStorage', () => {
-      useNotesStore.setState({ isOnline: false });
-      useNotesStore.getState().queueCodeExecution('note-1', 'block-1', 'print("test")', 'python');
-
-      const stored = localStorage.getItem('sandbooks-offline-queue');
-      expect(stored).toBeDefined();
-      const parsed = JSON.parse(stored!);
-      expect(Array.isArray(parsed)).toBe(true);
     });
 
     it('should clear offline queue', () => {
@@ -726,82 +647,28 @@ describe('notesStore', () => {
       expect(localStorage.getItem('sandbooks-offline-queue')).toBeNull();
     });
 
-    it('should process offline queue when coming online', async () => {
-      const note: Note = {
-        id: 'queue-note',
-        title: 'Queue Test',
-        content: { type: 'doc', content: [] },
-        tags: [],
-        codeBlocks: [{ id: 'block-1', code: 'print("test")', language: 'python', createdAt: Date.now(), updatedAt: Date.now() }],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
+    it('should handle queueCodeExecution gracefully (deprecated)', () => {
+      // queueCodeExecution is deprecated - now just logs a warning
+      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      useNotesStore.getState().queueCodeExecution('note-1', 'block-1', 'print("test")', 'python');
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Offline queue for code blocks has been removed'));
+      consoleSpy.mockRestore();
+    });
 
-      useNotesStore.setState({
-        notes: [note],
-        isOnline: false,
-        offlineQueue: [
-          { id: 'q1', noteId: note.id, blockId: 'block-1', code: 'print("test")', language: 'python', timestamp: Date.now() },
-        ],
-      });
-
-      useNotesStore.getState().setIsOnline(true);
-      
-      // Wait for async processing
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
-      // Queue should be processed (cleared)
-      expect(useNotesStore.getState().offlineQueue.length).toBe(0);
+    it('should handle processOfflineQueue gracefully (deprecated)', async () => {
+      // processOfflineQueue is deprecated - now just logs a warning
+      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      await useNotesStore.getState().processOfflineQueue();
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Offline queue processing removed'));
+      consoleSpy.mockRestore();
     });
   });
 
-  describe('executeCodeBlock', () => {
-    it('should queue execution when offline', async () => {
-      const note: Note = {
-        id: 'exec-note',
-        title: 'Exec Note',
-        content: { type: 'doc', content: [] },
-        tags: [],
-        codeBlocks: [{ id: 'block-1', code: 'print("test")', language: 'python', createdAt: Date.now(), updatedAt: Date.now() }],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-
-      useNotesStore.setState({ notes: [note], isOnline: false });
-      await useNotesStore.getState().executeCodeBlock(note.id, 'block-1');
-
-      expect(useNotesStore.getState().offlineQueue.length).toBe(1);
-    });
-
-    it('should throw error when code block not found', async () => {
-      const note: Note = {
-        id: 'exec-note-2',
-        title: 'Exec Note 2',
-        content: { type: 'doc', content: [] },
-        tags: [],
-        codeBlocks: [],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-
-      useNotesStore.setState({ notes: [note], isOnline: true });
-
-      await expect(
-        useNotesStore.getState().executeCodeBlock(note.id, 'non-existent')
-      ).rejects.toThrow('Code block not found');
-    });
-  });
+  // executeCodeBlock tests removed - code execution is now handled by ExecutableCodeBlock TipTap nodes
 
   describe('autoHealSandbox', () => {
-    it('should return false when cloud execution is disabled', async () => {
-      useNotesStore.setState({ cloudExecutionEnabled: false });
-      const result = await useNotesStore.getState().autoHealSandbox();
-      expect(result).toBe(false);
-    });
-
     it('should return true when sandbox is already being created', async () => {
       useNotesStore.setState({
-        cloudExecutionEnabled: true,
         isCreatingSandbox: true,
       });
       const result = await useNotesStore.getState().autoHealSandbox();
@@ -920,78 +787,7 @@ describe('notesStore', () => {
       expect(useNotesStore.getState().notes.find(n => n.id === 'delete-error')).toBeUndefined();
     });
 
-    it('should handle code execution error', async () => {
-      vi.mocked(executionModeManager.getExecutionProvider).mockReturnValue({
-        provider: 'cloud',
-        name: 'Cloud',
-        isAvailable: vi.fn().mockResolvedValue(true),
-        executeCode: vi.fn().mockRejectedValue(new Error('Execution error')),
-        cleanup: vi.fn(),
-      });
-
-      const note: Note = {
-        id: 'exec-error',
-        title: 'Exec Error',
-        content: { type: 'doc', content: [] },
-        tags: [],
-        codeBlocks: [{ id: 'block-1', code: 'print("error")', language: 'python', createdAt: Date.now(), updatedAt: Date.now() }],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-
-      useNotesStore.setState({ 
-        notes: [note], 
-        isOnline: true, 
-        executionMode: 'cloud',
-        cloudExecutionEnabled: true 
-      });
-      await useNotesStore.getState().executeCodeBlock('exec-error', 'block-1');
-
-      const updatedNote = useNotesStore.getState().notes.find(n => n.id === 'exec-error');
-      expect(updatedNote?.codeBlocks?.[0].output?.error).toBeDefined();
-    });
-
-    it('should handle processOfflineQueue when note not found', async () => {
-      useNotesStore.setState({
-        isOnline: true,
-        offlineQueue: [
-          { id: 'q1', noteId: 'non-existent', blockId: 'b1', code: 'test', language: 'python', timestamp: Date.now() },
-        ],
-      });
-
-      await useNotesStore.getState().processOfflineQueue();
-      
-      // Should handle gracefully without error
-      expect(useNotesStore.getState().offlineQueue.length).toBe(0);
-    });
-
-    it('should handle processOfflineQueue execution error', async () => {
-      const { hopxService } = await import('../../services/hopx');
-      vi.mocked(hopxService.executeCode).mockRejectedValueOnce(new Error('Queue exec error'));
-
-      const note: Note = {
-        id: 'queue-error',
-        title: 'Queue Error',
-        content: { type: 'doc', content: [] },
-        tags: [],
-        codeBlocks: [{ id: 'block-1', code: 'test', language: 'python', createdAt: Date.now(), updatedAt: Date.now() }],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-
-      useNotesStore.setState({
-        notes: [note],
-        isOnline: true,
-        offlineQueue: [
-          { id: 'q1', noteId: note.id, blockId: 'block-1', code: 'test', language: 'python', timestamp: Date.now() },
-        ],
-      });
-
-      await useNotesStore.getState().processOfflineQueue();
-      
-      const updatedNote = useNotesStore.getState().notes.find(n => n.id === note.id);
-      expect(updatedNote?.codeBlocks?.[0].output?.error).toBeDefined();
-    });
+    // Code execution error handling tests removed - code execution is now handled by ExecutableCodeBlock TipTap nodes
   });
 
   describe('autoHealSandbox error handling', () => {
@@ -1010,7 +806,6 @@ describe('notesStore', () => {
         } as Response);
 
       useNotesStore.setState({
-        cloudExecutionEnabled: true,
         isCreatingSandbox: false,
         lastHealthCheck: null,
       });
@@ -1031,7 +826,6 @@ describe('notesStore', () => {
         .mockRejectedValueOnce(new Error('Circuit breaker is open'));
 
       useNotesStore.setState({
-        cloudExecutionEnabled: true,
         isCreatingSandbox: false,
         lastHealthCheck: null,
       });
@@ -1042,7 +836,6 @@ describe('notesStore', () => {
 
     it('should skip heal if recently checked', async () => {
       useNotesStore.setState({
-        cloudExecutionEnabled: true,
         isCreatingSandbox: false,
         lastHealthCheck: Date.now() - 1000, // 1 second ago
         sandboxStatus: 'healthy',
