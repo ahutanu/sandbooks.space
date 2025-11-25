@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNotesStore } from '../../store/notesStore';
 import clsx from 'clsx';
-import { FaDownload, FaUpload } from 'react-icons/fa';
+import { LuDownload, LuUpload, LuRefreshCw, LuCircleAlert, LuCheck, LuCloud, LuHardDrive, LuFileJson, LuFileCode, LuFileText } from 'react-icons/lu';
 import { FileSystemSync } from '../FileSystemSync';
 import { showToast as toast } from '../../utils/toast';
 import { parseIpynb, convertIpynbToNote } from '../../utils/ipynb';
@@ -94,21 +94,17 @@ export const SyncStatusIcon = () => {
             case 'saving':
                 return (
                     <div className="relative">
-                        <svg className="w-5 h-5 text-yellow-600 dark:text-yellow-400 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
-                        </svg>
-                        <div className="absolute -bottom-1 -right-1 w-2.5 h-2.5 bg-yellow-500 rounded-full border-2 border-white dark:border-stone-900 animate-ping" />
+                        <LuRefreshCw className="w-5 h-5 text-yellow-600 dark:text-yellow-400 animate-spin" />
+                        <div className="absolute -bottom-1 -right-1 w-2.5 h-2.5 bg-yellow-500 rounded-full border-2 border-white dark:border-stone-900" />
                     </div>
                 );
             case 'disconnected':
             case 'error':
                 return (
                     <div className="relative">
-                        <svg className="w-5 h-5 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
-                        </svg>
+                        <LuCircleAlert className="w-5 h-5 text-red-600 dark:text-red-400" />
                         <div className="absolute -bottom-1 -right-1 flex items-center justify-center w-3 h-3 bg-red-500 rounded-full border-2 border-white dark:border-stone-900">
-                            <svg className="w-2 h-2 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} d="M6 18L18 6M6 6l12 12" /></svg>
+                            <span className="text-[8px] font-bold text-white">!</span>
                         </div>
                     </div>
                 );
@@ -116,11 +112,9 @@ export const SyncStatusIcon = () => {
             default:
                 return (
                     <div className="relative">
-                        <svg className="w-5 h-5 text-stone-600 dark:text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
-                        </svg>
+                        <LuCloud className="w-5 h-5 text-stone-600 dark:text-stone-400" />
                         <div className="absolute -bottom-1 -right-1 flex items-center justify-center w-3 h-3 bg-green-500 rounded-full border-2 border-white dark:border-stone-900">
-                            <svg className="w-2 h-2 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} d="M5 13l4 4L19 7" /></svg>
+                            <LuCheck className="w-2 h-2 text-white" strokeWidth={4} />
                         </div>
                     </div>
                 );
@@ -184,13 +178,9 @@ export const SyncStatusIcon = () => {
                                     : "bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400 border-stone-200 dark:border-stone-700"
                             )}>
                                 {storageType === 'fileSystem' ? (
-                                    <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
-                                    </svg>
+                                    <LuHardDrive className="w-3 h-3 shrink-0" />
                                 ) : (
-                                    <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                                    </svg>
+                                    <LuCloud className="w-3 h-3 shrink-0" />
                                 )}
                                 <span className="truncate">{storageName}</span>
                             </span>
@@ -207,13 +197,13 @@ export const SyncStatusIcon = () => {
                             disabled={notes.length === 0}
                             className="w-full justify-start gap-3 px-2"
                         >
-                            <FaDownload className="w-4 h-4 shrink-0 text-stone-500 dark:text-stone-400" />
+                            <LuDownload className="w-4 h-4 shrink-0 text-stone-500 dark:text-stone-400" />
                             <span>Export Notes</span>
                         </Button>
 
                         {/* Import from JSON */}
                         <label className="w-full flex items-center gap-3 px-2 py-2 text-left text-sm text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800 hover:text-stone-900 dark:hover:text-stone-200 transition-all duration-200 rounded-lg cursor-pointer">
-                            <FaUpload className="w-4 h-4 shrink-0" />
+                            <LuUpload className="w-4 h-4 shrink-0" />
                             <span className="flex-1 font-medium">Import from JSON</span>
                             <input
                                 ref={fileInputRef}
@@ -226,9 +216,7 @@ export const SyncStatusIcon = () => {
 
                         {/* Import Jupyter Notebook */}
                         <label className="w-full flex items-center gap-3 px-2 py-2 text-left text-sm text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800 hover:text-stone-900 dark:hover:text-stone-200 transition-all duration-200 rounded-lg cursor-pointer">
-                            <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                            </svg>
+                            <LuFileCode className="w-4 h-4 shrink-0" />
                             <span className="flex-1 font-medium">Import Jupyter Notebook</span>
                             <input
                                 ref={notebookInputRef}
@@ -269,16 +257,12 @@ export const SyncStatusIcon = () => {
                             disabled={!useNotesStore.getState().activeNoteId}
                             className="w-full justify-start gap-3 px-2"
                         >
-                            <svg className="w-4 h-4 shrink-0 text-stone-500 dark:text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                            </svg>
+                            <LuFileText className="w-4 h-4 shrink-0 text-stone-500 dark:text-stone-400" />
                             <span>Export Current (Markdown)</span>
                         </Button>
 
                         <label className="w-full flex items-center gap-3 px-2 py-2 text-left text-sm text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800 hover:text-stone-900 dark:hover:text-stone-200 transition-all duration-200 rounded-lg cursor-pointer">
-                            <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                            </svg>
+                            <LuFileJson className="w-4 h-4 shrink-0" />
                             <span className="flex-1 font-medium">Import Markdown</span>
                             <input
                                 type="file"

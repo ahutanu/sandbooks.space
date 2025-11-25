@@ -90,9 +90,12 @@ module.exports = {
         '5xl': ['3rem', { lineHeight: '1.2', letterSpacing: '-0.02em' }],        // 48px, 1.2 line-height (was 39px) - Hero text
       },
       letterSpacing: {
+        tighter: '-0.04em',
         tight: '-0.02em',
-        normal: '0em',
+        normal: '-0.01em', // Slight negative tracking for Mono UI to feel more cohesive
         wide: '0.02em',
+        wider: '0.05em',
+        widest: '0.1em',
       },
       lineHeight: {
         'tight': '1.2',      // Headings, compact UI (user's default)
@@ -146,11 +149,11 @@ module.exports = {
         },
       },
       animation: {
-        fadeIn: 'fadeIn 300ms smooth',                          // Smooth fade (was robotic 200ms)
-        slideInLeft: 'slideInLeft 350ms spring',                // Spring slide (was linear 250ms)
-        scaleIn: 'scaleIn 300ms spring',                        // Spring scale (was robotic 200ms)
-        fadeInSlideUp: 'fadeInSlideUp 400ms spring',           // NEW: Entrance animation for outputs
-        pulseGlow: 'pulseGlow 1.5s smooth infinite',           // NEW: Run button glow
+        fadeIn: 'fadeIn 300ms cubic-bezier(0.34, 1.56, 0.64, 1)',      // Spring physics
+        slideInLeft: 'slideInLeft 350ms cubic-bezier(0.34, 1.56, 0.64, 1)',
+        scaleIn: 'scaleIn 300ms cubic-bezier(0.34, 1.56, 0.64, 1)',
+        fadeInSlideUp: 'fadeInSlideUp 400ms cubic-bezier(0.34, 1.56, 0.64, 1)',
+        pulseGlow: 'pulseGlow 1.5s smooth infinite',
         pulse: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
       },
     },

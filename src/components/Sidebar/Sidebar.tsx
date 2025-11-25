@@ -23,8 +23,8 @@ export const Sidebar = ({ isMobile = false, onClose }: { isMobile?: boolean; onC
       )}>
         <div className="text-center">
           <Logo className="w-16 h-16 mx-auto text-stone-300 dark:text-stone-600 mb-6" />
-          <p className="text-sm font-medium text-stone-600 dark:text-stone-400">No notes yet</p>
-          <p className="text-xs text-stone-500 dark:text-stone-500 mt-2">Click "+ New Note" to get started</p>
+          <p className="text-sm font-medium text-stone-600 dark:text-stone-400 tracking-tight">No notes yet</p>
+          <p className="text-xs text-stone-500 dark:text-stone-500 mt-2">Press <kbd className="font-mono bg-stone-100 dark:bg-stone-800 px-1 rounded">⌘N</kbd> to start writing</p>
         </div>
       </div>
     );
@@ -63,8 +63,8 @@ export const Sidebar = ({ isMobile = false, onClose }: { isMobile?: boolean; onC
               className={clsx(
                 'px-3 md:px-4 py-3.5 md:py-3.5 mb-1 mx-2 rounded-lg transition-all duration-200 ease-out group relative touch-manipulation',
                 activeNoteId === note.id
-                  ? 'bg-white dark:bg-stone-800 shadow-sm ring-1 ring-stone-200 dark:ring-stone-700 z-10 text-stone-900 dark:text-stone-100'
-                  : 'hover:bg-stone-100 dark:hover:bg-stone-800/40 text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200 active:bg-stone-100 dark:active:bg-stone-800/60'
+                  ? 'bg-stone-100 dark:bg-stone-800 text-stone-900 dark:text-stone-100'
+                  : 'hover:bg-stone-50 dark:hover:bg-stone-800/40 text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200 active:bg-stone-100 dark:active:bg-stone-800/60'
               )}
             >
               {/* Active Indicator */}
@@ -79,7 +79,7 @@ export const Sidebar = ({ isMobile = false, onClose }: { isMobile?: boolean; onC
                   aria-current={activeNoteId === note.id ? 'true' : 'false'}
                 >
                   <h3 className={clsx(
-                    'truncate text-sm font-medium leading-snug pl-2',
+                    'truncate text-sm font-medium leading-snug pl-2 tracking-tight',
                     activeNoteId === note.id
                       ? 'text-stone-900 dark:text-stone-100'
                       : 'text-stone-700 dark:text-stone-300 group-hover:text-stone-900 dark:group-hover:text-stone-200'

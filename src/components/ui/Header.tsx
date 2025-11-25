@@ -4,6 +4,7 @@ import { Logo } from './Logo';
 import { SyncStatusIcon } from './SyncStatusIcon';
 import { Button } from './Button';
 import { Tooltip } from './Tooltip';
+import { LuMenu, LuPanelLeftClose, LuPanelLeftOpen, LuMoon, LuSun, LuTerminal, LuPlus } from 'react-icons/lu';
 
 
 interface HeaderProps {
@@ -31,9 +32,7 @@ export const Header = ({ onToggleMobileSidebar }: HeaderProps) => {
             onClick={onToggleMobileSidebar}
             aria-label="Toggle sidebar"
           >
-            <svg className="w-6 h-6 text-stone-700 dark:text-stone-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
+            <LuMenu className="w-6 h-6 text-stone-700 dark:text-stone-300" />
           </Button>
         </div>
 
@@ -46,13 +45,11 @@ export const Header = ({ onToggleMobileSidebar }: HeaderProps) => {
               onClick={toggleSidebar}
               aria-label={isSidebarOpen ? "Hide sidebar" : "Show sidebar"}
             >
-              <svg className="w-5 h-5 text-stone-600 dark:text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                {isSidebarOpen ? (
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
-                ) : (
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
-                )}
-              </svg>
+              {isSidebarOpen ? (
+                <LuPanelLeftClose className="w-5 h-5 text-stone-600 dark:text-stone-400" />
+              ) : (
+                <LuPanelLeftOpen className="w-5 h-5 text-stone-600 dark:text-stone-400" />
+              )}
             </Button>
           </Tooltip>
         </div>
@@ -81,18 +78,11 @@ export const Header = ({ onToggleMobileSidebar }: HeaderProps) => {
             onClick={toggleDarkMode}
             aria-label={darkModeEnabled ? "Switch to light mode" : "Switch to dark mode"}
           >
-            <svg
-              className={clsx(
-                "w-5 h-5 transition-all duration-300 ease-out",
-                darkModeEnabled ? "text-stone-300 rotate-180" : "text-stone-700 rotate-0"
-              )}
-              viewBox="0 0 24 24"
-              fill="currentColor"
-            >
-              <circle cx="12" cy="12" r="9" fill="currentColor" opacity="0.15" />
-              <path d="M12 3 A 9 9 0 0 1 12 21 Z" fill="currentColor" />
-              <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeWidth="1.5" opacity="0.4" />
-            </svg>
+            {darkModeEnabled ? (
+              <LuSun className="w-5 h-5 text-stone-300" />
+            ) : (
+              <LuMoon className="w-5 h-5 text-stone-700" />
+            )}
           </Button>
         </Tooltip>
 
@@ -106,24 +96,14 @@ export const Header = ({ onToggleMobileSidebar }: HeaderProps) => {
             )}
             aria-label={isTerminalOpen ? "Close terminal" : "Open terminal"}
           >
-            <svg
+            <LuTerminal
               className={clsx(
                 "w-5 h-5 transition-colors duration-200",
                 isTerminalOpen
                   ? "text-blue-600 dark:text-blue-400"
                   : "text-stone-600 dark:text-stone-400"
               )}
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-              />
-            </svg>
+            />
           </Button>
         </Tooltip>
 
@@ -136,9 +116,7 @@ export const Header = ({ onToggleMobileSidebar }: HeaderProps) => {
             onClick={handleNewNote}
             aria-label="Create new note"
           >
-            <svg className="w-5 h-5 text-stone-600 dark:text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
+            <LuPlus className="w-5 h-5 text-stone-600 dark:text-stone-400" />
           </Button>
         </Tooltip>
 

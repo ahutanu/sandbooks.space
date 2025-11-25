@@ -63,7 +63,7 @@ describe('Header Component', () => {
     it('handles dark mode toggle', async () => {
         render(<Header onToggleMobileSidebar={mockToggleMobileSidebar} />);
 
-        const darkModeButton = screen.getByTitle('Switch to dark mode');
+        const darkModeButton = screen.getByLabelText('Switch to dark mode');
         fireEvent.click(darkModeButton);
 
         const { useNotesStore } = await import('../../store/notesStore');
@@ -73,7 +73,7 @@ describe('Header Component', () => {
     it('handles new note creation', async () => {
         render(<Header onToggleMobileSidebar={mockToggleMobileSidebar} />);
 
-        const newNoteButton = screen.getByTitle('New note (⌘N)');
+        const newNoteButton = screen.getByLabelText('Create new note');
         fireEvent.click(newNoteButton);
 
         const { useNotesStore } = await import('../../store/notesStore');
@@ -83,7 +83,7 @@ describe('Header Component', () => {
     it('handles sidebar toggle', async () => {
         render(<Header onToggleMobileSidebar={mockToggleMobileSidebar} />);
 
-        const sidebarButton = screen.getByTitle('Hide sidebar (⌘B)');
+        const sidebarButton = screen.getByLabelText('Hide sidebar');
         fireEvent.click(sidebarButton);
 
         const { useNotesStore } = await import('../../store/notesStore');
@@ -102,7 +102,7 @@ describe('Header Component', () => {
     it('handles terminal toggle', async () => {
         render(<Header onToggleMobileSidebar={mockToggleMobileSidebar} />);
 
-        const terminalButton = screen.getByTitle('Open terminal (Ctrl+`)');
+        const terminalButton = screen.getByLabelText('Open terminal');
         fireEvent.click(terminalButton);
 
         const { useNotesStore } = await import('../../store/notesStore');

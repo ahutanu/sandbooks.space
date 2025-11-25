@@ -5,8 +5,8 @@ import type { Language, ExecutionResult } from '../../types';
 import { useNotesStore } from '../../store/notesStore';
 import { showToast as toast } from '../../utils/toast';
 import { executionModeManager } from '../../services/execution/executionModeManager';
-import clsx from 'clsx';
 import { VscClearAll } from 'react-icons/vsc';
+import { Button } from '../ui/Button';
 import { LanguageIcon } from './LanguageIcon';
 import { CodeMirrorEditor } from './CodeMirrorEditor';
 import { recordOnboardingEvent } from '../../utils/onboardingMetrics';
@@ -210,39 +210,36 @@ export const ExecutableCodeBlockComponent = ({ node, updateAttributes }: NodeVie
           {/* Action Buttons - Icon Only */}
           <div className="flex items-center gap-1.5">
             {executionResult && (
-              <button
+              <Button
+                variant="ghost"
+                size="icon"
                 onClick={handleClearOutput}
-                className="p-2 bg-stone-200 hover:bg-stone-300 dark:bg-stone-600/50 dark:hover:bg-stone-500 text-stone-600 dark:text-stone-100 rounded-lg transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-400 active:scale-[0.95]"
-                contentEditable={false}
+                className="text-stone-600 dark:text-stone-100 hover:bg-stone-200 dark:hover:bg-stone-600/50"
                 aria-label="Clear output"
                 title="Clear output"
               >
                 <VscClearAll size={18} aria-hidden="true" />
-              </button>
+              </Button>
             )}
             {sandboxStatus === 'unhealthy' && (
-              <button
+              <Button
+                variant="danger"
+                size="icon"
                 onClick={handleRestartSandbox}
-                className="p-2 bg-amber-600/80 hover:bg-amber-600 text-white rounded-lg transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 active:scale-[0.95]"
-                contentEditable={false}
+                className="bg-amber-600/80 hover:bg-amber-600 text-white hover:text-white"
                 aria-label="Restart sandbox"
                 title="Restart sandbox"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
-              </button>
+              </Button>
             )}
-            <button
+            <Button
+              variant="default"
               onClick={handleExecute}
               disabled={isExecuting || sandboxStatus === 'creating'}
-              className={clsx(
-                'p-2.5 rounded-lg transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 active:scale-[0.95]',
-                isExecuting || sandboxStatus === 'creating'
-                  ? 'bg-stone-100 dark:bg-stone-600/50 cursor-not-allowed text-stone-400 animate-pulseGlow'
-                  : 'bg-white dark:bg-emerald-600 border border-stone-200 dark:border-transparent text-stone-600 dark:text-white hover:border-emerald-500 hover:text-emerald-600 dark:hover:bg-emerald-700 shadow-sm hover:shadow-md dark:shadow-emerald-500/30 dark:hover:shadow-emerald-500/50'
-              )}
-              contentEditable={false}
+              className="gap-2"
               aria-label={isExecuting ? 'Code is executing' : 'Run code'}
               aria-busy={isExecuting}
               title={isExecuting ? 'Running...' : 'Run code'}
@@ -255,7 +252,7 @@ export const ExecutableCodeBlockComponent = ({ node, updateAttributes }: NodeVie
                   <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               )}
-            </button>
+            </Button>
           </div>
         </div>
 
