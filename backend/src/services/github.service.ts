@@ -888,8 +888,27 @@ class GitHubService {
       }
     }
 
-    // Note: We don't auto-delete files that aren't in the notes array
-    // That would be handled by explicit delete operations
+    // Delete orphaned files (notes deleted locally but still in GitHub)
+    for (const [filename, file] of existingByFilename) {
+      if (!filename.endsWith('.md')) continue;
+
+      try {
+        await this.deleteFile(
+          token,
+          repo,
+          `${path}/notes/${filename}`,
+          file.sha,
+          message || `sandbooks: delete ${filename}`
+        );
+        filesDeleted++;
+        logger.info('Deleted orphaned file from GitHub', { filename });
+      } catch (err) {
+        logger.warn('Failed to delete orphaned file', {
+          filename,
+          error: getErrorMessage(err),
+        });
+      }
+    }
 
     return {
       success: true,
