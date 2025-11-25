@@ -87,12 +87,7 @@ Single global store (`src/store/notesStore.ts`):
 
 - Quake-style overlay (toggle: `Cmd+\``)
 - GLOBAL session (single session per app)
-- Dual execution modes:
-  - **Cloud Mode (REPL)**: Hopx sandbox, SSE streaming, command-line buffering
-  - **Local Mode (PTY)**: Native shell via node-pty, WebSocket streaming, raw terminal
-    - **IMPORTANT**: Local mode only works when backend runs on user's machine (localhost)
-    - Web app (sandbooks.space): Cloud mode only
-    - Local installation: Both modes available
+- Cloud terminal streams every keystroke to the Hopx sandbox over SSE (no local PTY fallback)
 - Terminal Emulator: xterm.js with GPU acceleration (WebGL)
 - Advanced Features:
   - Unicode 11 support (emoji, CJK, RTL)
@@ -100,20 +95,6 @@ Single global store (`src/store/notesStore.ts`):
   - OSC sequence handlers (shell integration ready)
   - Session health checks and reconnection
   - Terminal size validation (10x2 to 1000x1000)
-
-**Local Terminal** (`localTerminal.service.ts`):
-- **Architecture**: Backend runs on user's machine (localhost)
-- **Security**: Frontend validates backend URL is localhost before enabling
-- **Production**: Automatically disabled when backend is remote
-- PTY process spawning via node-pty
-- Shell detection (zsh, bash, fish, PowerShell, cmd)
-- Login shell mode (-l -i) for proper profile loading
-- Environment variable whitelisting (security)
-- Session management with 30min timeout
-- WebSocket streaming for low latency
-- Health check endpoint for session validation
-- Graceful shutdown (SIGTERM → SIGKILL)
-- **Use Case**: Users running `npm start` locally for full local terminal access
 
 **Cloud Terminal** (`terminalSessionManager.ts`):
 - Isolated Hopx sandbox per session
@@ -156,11 +137,6 @@ Single global store (`src/store/notesStore.ts`):
 - `DELETE /api/terminal/sessions/:id` - Delete session
 - `POST /api/terminal/sessions/:id/execute` - Execute command
 - `GET /api/terminal/sessions/:id/stream` - SSE stream
-
-**Local Terminal:**
-- `WS /api/terminal/local/ws/:sessionId?` - WebSocket connection (creates or reconnects)
-- `GET /api/terminal/local/health` - Check if local terminal is available
-- `GET /api/terminal/local/sessions/:sessionId/health` - Check specific session health
 
 ## Environment Variables
 

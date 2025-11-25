@@ -22,7 +22,8 @@ export const useKeyboardShortcuts = () => {
             const isTyping =
                 ['INPUT', 'TEXTAREA'].includes(target.tagName) ||
                 target.contentEditable === 'true' ||
-                target.classList.contains('ProseMirror');
+                target.classList.contains('ProseMirror') ||
+                target.classList.contains('xterm-helper-textarea');
 
             // Helper to check against centralized definitions
             const check = (id: string) => {

@@ -38,11 +38,9 @@ export class CloudTerminalProvider implements TerminalProviderInterface {
     return terminalService.connectStream(sessionId);
   }
 
-  disconnectStream(stream: EventSource | WebSocket | null): void {
-    if (stream instanceof EventSource) {
+  disconnectStream(stream: EventSource | null): void {
+    if (stream) {
       terminalService.disconnectStream(stream);
-    } else if (stream instanceof WebSocket) {
-      stream.close();
     }
   }
 }

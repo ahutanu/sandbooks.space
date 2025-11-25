@@ -61,7 +61,7 @@ export type Language = 'python' | 'javascript' | 'typescript' | 'bash' | 'go';
 // Execution mode types
 export type ExecutionMode = 'cloud' | 'local';
 export type ExecutionProvider = 'cloud' | 'local';
-export type TerminalProvider = 'cloud' | 'local';
+export type TerminalProvider = 'cloud';
 
 export interface QueuedCodeExecution {
   id: string;

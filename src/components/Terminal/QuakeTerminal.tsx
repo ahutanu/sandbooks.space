@@ -132,7 +132,7 @@ export function QuakeTerminal() {
   }, []);
 
   // Session metadata (shell + cwd for display)
-  const [sessionInfo, setSessionInfo] = useState<{ shell?: string; workingDir?: string; provider?: 'local' | 'cloud' }>({});
+  const [sessionInfo, setSessionInfo] = useState<{ shell?: string; workingDir?: string; provider?: 'cloud' }>({});
 
   // Handle error
   const [errorMessage, setErrorMessage] = useState<string | undefined>(undefined);

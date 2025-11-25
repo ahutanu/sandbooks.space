@@ -2,9 +2,7 @@
  * TerminalEmulator Component
  *
  * High-performance xterm.js integration with WebGL support.
- * Supports two modes:
- * 1. 'pty' (Local): Raw keystroke streaming, server-side echo/history.
- * 2. 'repl' (Cloud): Local line buffering/editing, discrete command execution.
+ * Streaming terminal that forwards all keystrokes to the Hopx sandbox backend.
  */
 
 import { useCallback, useEffect, useRef, useMemo } from 'react';
@@ -15,7 +13,6 @@ import { SearchAddon } from '@xterm/addon-search';
 import { SerializeAddon } from '@xterm/addon-serialize';
 import { Unicode11Addon } from '@xterm/addon-unicode11';
 import { ImageAddon } from '@xterm/addon-image';
-import { CanvasAddon } from '@xterm/addon-canvas';
 import '@xterm/xterm/css/xterm.css';
 import { executionModeManager } from '../../services/execution/executionModeManager';
 import { useNotesStore } from '../../store/notesStore';
@@ -76,6 +73,10 @@ const DARK_THEME: TerminalTheme = {
   brightWhite: '#fafaf9',
 };
 
+const CLEAR_LINE_SEQUENCE = '\u0015\u000B';
+const BACKSPACE_ECHO = '\b \b';
+const isPrintableSequence = (input: string): boolean => Array.from(input).every((char) => char >= ' ' && char <= '~');
+
 export function TerminalEmulator({
   sessionId,
   noteId: _noteId,
@@ -92,23 +93,18 @@ export function TerminalEmulator({
   const fitAddonRef = useRef<FitAddon | null>(null);
   const searchAddonRef = useRef<SearchAddon | null>(null);
   const serializeAddonRef = useRef<SerializeAddon | null>(null);
-  const canvasAddonRef = useRef<CanvasAddon | null>(null);
   const isOpenedRef = useRef(false);
 
   // Connection refs
-  const streamRef = useRef<EventSource | WebSocket | null>(null);
-  const wsHandlersRef = useRef<{
-    message: ((event: Event) => void) | null;
-    error: ((event: Event) => void) | null;
-    close: ((event: Event) => void) | null;
-  }>({ message: null, error: null, close: null });
-  const lastPingRef = useRef<number | null>(null);
+  const streamRef = useRef<EventSource | null>(null);
 
   // REPL State (Cloud mode only)
   const commandHistoryRef = useRef<string[]>([]);
   const historyIndexRef = useRef<number>(-1);
   const currentLineRef = useRef<string>('');
-  const promptShownRef = useRef(false);
+  const pendingEchoRef = useRef('');
+  const isEditingRef = useRef(false);
+  const draftCommandRef = useRef('');
 
   // Stable theme selection using useMemo to prevent recreation
   const isDarkMode = typeof window !== 'undefined' && document.documentElement.classList.contains('dark');
@@ -128,89 +124,158 @@ export function TerminalEmulator({
     onSessionInfoRef.current = onSessionInfo;
   }, [onStatusChange, onLatencyUpdate, onError, onSessionInfo]);
 
-  const ensurePrompt = useCallback(() => {
-    const terminal = xtermRef.current;
-    const provider = executionModeManager.getTerminalProvider();
-    // Only force prompt for REPL mode (Cloud) or if specifically needed
-    if (!terminal || !provider || provider.mode === 'pty') return;
-
-    terminal.write('$ ');
-    promptShownRef.current = true;
-  }, []);
-
-  // Reset prompt state when session changes
-  useEffect(() => {
-    promptShownRef.current = false;
-  }, [sessionId]);
 
   const handleTerminalInput = useCallback((data: string) => {
-    const terminal = xtermRef.current;
     const provider = executionModeManager.getTerminalProvider();
-    if (!terminal || !provider) return;
+    if (!provider) return;
 
-    // --- MODE 1: PTY (Local) ---
-    // Direct raw input streaming. No local intelligence.
-    if (provider.mode === 'pty') {
-      provider.sendInput(sessionId, data).catch(err => onErrorRef.current(err.message));
+    const sendChunk = (chunk: string) => {
+      if (!chunk) return;
+      provider.sendInput(sessionId, chunk).catch(err => onErrorRef.current(err.message));
+    };
+
+    const queueEcho = (chunk: string) => {
+      if (!chunk) return;
+      pendingEchoRef.current += chunk;
+    };
+
+    const replaceLineWithCommand = (command: string) => {
+      currentLineRef.current = command;
+      isEditingRef.current = command.length > 0;
+      if (command) {
+        queueEcho(command);
+      }
+      sendChunk(`${CLEAR_LINE_SEQUENCE}${command}`);
+    };
+
+    const handleHistoryNavigation = (direction: 'up' | 'down') => {
+      const history = commandHistoryRef.current;
+      if (history.length === 0) {
+        sendChunk(data);
+        return;
+      }
+
+      if (historyIndexRef.current === -1) {
+        historyIndexRef.current = history.length;
+      }
+
+      if (direction === 'up') {
+        if (historyIndexRef.current === history.length) {
+          draftCommandRef.current = currentLineRef.current;
+        }
+        if (historyIndexRef.current > 0) {
+          historyIndexRef.current -= 1;
+        }
+      } else {
+        if (historyIndexRef.current < history.length) {
+          historyIndexRef.current += 1;
+        }
+      }
+
+      if (historyIndexRef.current >= history.length) {
+        historyIndexRef.current = history.length;
+        replaceLineWithCommand(draftCommandRef.current || '');
+        draftCommandRef.current = '';
+        return;
+      }
+
+      const command = history[historyIndexRef.current];
+      replaceLineWithCommand(command);
+    };
+
+    if (data === '\r') {
+      const command = currentLineRef.current;
+      if (command.trim()) {
+        commandHistoryRef.current.push(command);
+      }
+      historyIndexRef.current = commandHistoryRef.current.length;
+      draftCommandRef.current = '';
+      currentLineRef.current = '';
+      isEditingRef.current = false;
+      sendChunk('\r');
       return;
     }
 
-    // --- MODE 2: REPL (Cloud) ---
-    // Local buffering, editing, history, and echo.
-    
-    // Handle special keys
-    if (data === '\r') { // Enter
-      const command = currentLineRef.current;
-      terminal.write('\r\n'); // Echo newline locally
-      
-      if (command.trim()) {
-        commandHistoryRef.current.push(command);
-        historyIndexRef.current = commandHistoryRef.current.length;
-
-        // Send full command to provider
-        provider.sendInput(sessionId, command + '\n').catch((error) => onErrorRef.current(error.message));
-      } else {
-        // Empty line
-        terminal.write('\r\n'); // Just another newline
+    if (data === '\x7F' || data === '\b') {
+      const characters = Array.from(currentLineRef.current);
+      if (characters.length > 0) {
+        characters.pop();
+        currentLineRef.current = characters.join('');
       }
-      currentLineRef.current = '';
-      
-    } else if (data === '\x7F' || data === '\b') { // Backspace
-      if (currentLineRef.current.length > 0) {
-        currentLineRef.current = currentLineRef.current.slice(0, -1);
-        terminal.write('\b \b'); // Destructive backspace
-      }
-      
-    } else if (data === '\x1b[A') { // Up Arrow
-      if (commandHistoryRef.current.length > 0 && historyIndexRef.current > 0) {
-        historyIndexRef.current--;
-        const prevCommand = commandHistoryRef.current[historyIndexRef.current];
-        // Clear line and write previous command
-        terminal.write(`\x1b[2K\r$ ${prevCommand}`);
-        currentLineRef.current = prevCommand;
-      }
-      
-    } else if (data === '\x1b[B') { // Down Arrow
-      if (commandHistoryRef.current.length > 0 && historyIndexRef.current < commandHistoryRef.current.length - 1) {
-        historyIndexRef.current++;
-        const nextCommand = commandHistoryRef.current[historyIndexRef.current];
-        terminal.write(`\x1b[2K\r$ ${nextCommand}`);
-        currentLineRef.current = nextCommand;
-      } else {
-        historyIndexRef.current = commandHistoryRef.current.length;
-        terminal.write('\x1b[2K\r$ ');
-        currentLineRef.current = '';
-      }
-      
-    } else if (data === '\u0003') { // Ctrl+C
-      terminal.write('^C\r\n$ ');
-      currentLineRef.current = '';
-      // Ideally cancel execution on backend too if possible
-      
-    } else { // Normal Char
-      terminal.write(data); // Local echo
-      currentLineRef.current += data;
+      isEditingRef.current = currentLineRef.current.length > 0;
+      queueEcho(BACKSPACE_ECHO);
+      sendChunk('\x7F');
+      return;
     }
+
+    if (data === '\x1b[A') {
+      handleHistoryNavigation('up');
+      return;
+    }
+
+    if (data === '\x1b[B') {
+      handleHistoryNavigation('down');
+      return;
+    }
+
+    if (data === '\u0003') {
+      currentLineRef.current = '';
+      draftCommandRef.current = '';
+      isEditingRef.current = false;
+      pendingEchoRef.current = '';
+      sendChunk(data);
+      return;
+    }
+
+    if (isPrintableSequence(data)) {
+      currentLineRef.current += data;
+      isEditingRef.current = true;
+      queueEcho(data);
+    } else if (data === '\t') {
+      isEditingRef.current = true;
+    }
+
+    sendChunk(data);
+  }, [sessionId]);
+
+  const processBackendOutput = useCallback((payload: string) => {
+    if (!payload) return;
+    let pending = pendingEchoRef.current;
+    let command = currentLineRef.current;
+
+    for (const char of payload) {
+      if (pending.length > 0 && char === pending[0]) {
+        pending = pending.slice(1);
+        continue;
+      }
+
+      if (isEditingRef.current) {
+        if (char === '\b' || char === '\x7F') {
+          command = Array.from(command).slice(0, -1).join('');
+          continue;
+        }
+
+        if (char === '\r' || char === '\n' || char === '\u0007') {
+          continue;
+        }
+
+        if (char >= ' ') {
+          command += char;
+        }
+      }
+    }
+
+    pendingEchoRef.current = pending;
+    currentLineRef.current = command;
+  }, []);
+
+  useEffect(() => {
+    commandHistoryRef.current = [];
+    historyIndexRef.current = -1;
+    currentLineRef.current = '';
+    draftCommandRef.current = '';
+    pendingEchoRef.current = '';
+    isEditingRef.current = false;
   }, [sessionId]);
 
   // 1. Initialize xterm.js instance (runs ONCE)
@@ -304,9 +369,6 @@ export function TerminalEmulator({
     searchAddonRef.current = searchAddon;
     serializeAddonRef.current = serializeAddon;
 
-    // Initial Prompt (Cloud only)
-    ensurePrompt();
-
     return () => {
       terminal.dispose();
       xtermRef.current = null;
@@ -314,7 +376,7 @@ export function TerminalEmulator({
       searchAddonRef.current = null;
       isOpenedRef.current = false;
     };
-  }, [theme, handleTerminalInput, ensurePrompt]);
+  }, [theme, handleTerminalInput]);
 
   // 2. Handle Mounting/Rendering to DOM (runs when visible)
   useEffect(() => {
@@ -347,7 +409,6 @@ export function TerminalEmulator({
       // try {
       //   const canvasAddon = new CanvasAddon();
       //   xtermRef.current.loadAddon(canvasAddon);
-      //   canvasAddonRef.current = canvasAddon;
       //   logger.debug('Canvas addon loaded successfully');
       // } catch (err) {
       //   logger.error('Canvas renderer failed, using DOM fallback:', err);
@@ -442,160 +503,88 @@ export function TerminalEmulator({
       return;
     }
 
-    let stream: EventSource | WebSocket | null = null;
+    let stream: EventSource | null = null;
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
     const connect = () => {
-      console.log('[TerminalEmulator] connect() called', { sessionId, provider: provider?.name, mode: provider?.mode });
-      // Cleanup previous
       if (stream) {
-        if (stream instanceof WebSocket) {
-          const h = wsHandlersRef.current;
-          if (h.message) stream.removeEventListener('message', h.message);
-          if (h.error) stream.removeEventListener('error', h.error);
-          if (h.close) stream.removeEventListener('close', h.close);
-          wsHandlersRef.current = { message: null, error: null, close: null };
-        }
         provider.disconnectStream(stream);
       }
 
-      console.log('[TerminalEmulator] Calling provider.connectStream...');
       stream = provider.connectStream(sessionId);
       streamRef.current = stream;
-      console.log('[TerminalEmulator] connectStream returned:', stream ? stream.constructor.name : 'null');
 
       if (!stream) {
-        console.error('[TerminalEmulator] No stream returned from provider');
         onErrorRef.current('Failed to connect to terminal stream');
+        onStatusChangeRef.current('error');
         return;
       }
 
-      if (stream instanceof EventSource) {
-        // --- SSE (Cloud) ---
-        stream.onopen = () => {
-          ensurePrompt(); // Ensure prompt on connect
-        };
+      stream.onopen = () => {
+        onStatusChangeRef.current('connected');
+      };
 
-        stream.addEventListener('connected', (e: MessageEvent) => {
-          const data = JSON.parse(e.data);
-          if (xtermRef.current) {
-            xtermRef.current.write(`\x1b[32mConnected to sandbox ${data.sandboxId}\x1b[0m\r\n`);
-            ensurePrompt();
-            onStatusChangeRef.current('connected');
-            onSessionInfoRef.current?.({ provider: 'cloud' });
-          }
-        });
+      stream.onerror = () => {
+        onStatusChangeRef.current('error');
+        onErrorRef.current('Connection error');
+        if (reconnectTimer) clearTimeout(reconnectTimer);
+        reconnectTimer = setTimeout(connect, 2000);
+      };
 
-        stream.addEventListener('terminal_message', (e: MessageEvent) => {
-          const message = JSON.parse(e.data);
-          const terminal = xtermRef.current;
-          if (terminal && isOpenedRef.current) {
-            if (message.type === 'output' && message.data) {
-              terminal.write(message.data);
-            }
-          }
-        });
-
-        stream.addEventListener('output', (e: MessageEvent) => {
-          const data = JSON.parse(e.data);
-          const terminal = xtermRef.current;
-          // Defensive: Only write if terminal exists AND is opened to DOM
-          if (terminal && isOpenedRef.current) {
-            if (data.stdout) terminal.write(data.stdout.replace(/\n/g, '\r\n'));
-            if (data.stderr) terminal.write(`\x1b[31m${data.stderr.replace(/\n/g, '\r\n')}\x1b[0m`);
-          }
-        });
-
-        stream.addEventListener('complete', () => {
-          if (xtermRef.current) {
-            xtermRef.current.write('\r\n$ '); // Prompt after command
-          }
-        });
-
-        stream.onerror = () => {
-          onStatusChangeRef.current('error');
-          reconnectTimer = setTimeout(connect, 2000);
-        };
-
-      } else if (stream instanceof WebSocket) {
-        // --- WebSocket (Local) ---
-        const onMessage = (e: Event) => {
-          try {
-            const msg = JSON.parse((e as MessageEvent).data);
-            if (msg.type === 'connected') {
-               onStatusChangeRef.current('connected');
-               if (msg.shell || msg.workingDir) {
-                 onSessionInfoRef.current?.({ shell: msg.shell, workingDir: msg.workingDir, provider: 'local' });
-               }
-               // Don't force prompt here, PTY sends it
-            } else if (msg.type === 'output') {
-               const terminal = xtermRef.current;
-               // Defensive: Only write if terminal exists AND is opened to DOM
-               if (terminal && isOpenedRef.current) {
-                 terminal.write(msg.data);
-                 // Force refresh after write to ensure Canvas renders it
-                 if (canvasAddonRef.current) {
-                   terminal.scrollToBottom();
-                 }
-               } else {
-                 logger.error('Terminal not ready for output, data may be lost');
-               }
-            } else if (msg.type === 'exit') {
-               const terminal = xtermRef.current;
-               if (terminal && isOpenedRef.current) {
-                 terminal.write(`\r\n[Process exited: ${msg.exitCode}]\r\n`);
-               }
-             } else if (msg.type === 'pong' && typeof msg.ts === 'number') {
-                if (lastPingRef.current) {
-                  const rtt = Date.now() - lastPingRef.current;
-                  onLatencyUpdateRef.current(rtt);
-                  lastPingRef.current = null;
-                }
-            }
-          } catch (err) { logger.error('WS Parse Error', err); }
-        };
-
-        const onErrorHandler = () => {
-          onStatusChangeRef.current('error');
-          onErrorRef.current('Connection error');
-        };
-
-        const onClose = () => {
-          onStatusChangeRef.current('disconnected');
-          reconnectTimer = setTimeout(connect, 2000);
-        };
-
-        wsHandlersRef.current = { message: onMessage, error: onErrorHandler, close: onClose };
-        stream.addEventListener('message', onMessage);
-        stream.addEventListener('error', onErrorHandler);
-        stream.addEventListener('close', onClose);
-
-        if (stream.readyState === WebSocket.OPEN) {
-           onStatusChangeRef.current('connected');
+      stream.addEventListener('connected', (e: MessageEvent) => {
+        const data = JSON.parse(e.data);
+        if (xtermRef.current && isOpenedRef.current) {
+          xtermRef.current.write(`\x1b[32mConnected to sandbox ${data.sandboxId}\x1b[0m\r\n`);
         }
-      }
+        onSessionInfoRef.current?.({ provider: 'cloud' });
+        onStatusChangeRef.current('connected');
+      });
+
+      stream.addEventListener('terminal_message', (e: MessageEvent) => {
+        const message = JSON.parse(e.data);
+        const terminal = xtermRef.current;
+        if (terminal && isOpenedRef.current && message.type === 'output' && message.data) {
+          processBackendOutput(message.data);
+          terminal.write(message.data);
+        }
+      });
+
+      stream.addEventListener('output', (e: MessageEvent) => {
+        const data = JSON.parse(e.data);
+        const terminal = xtermRef.current;
+        if (terminal && isOpenedRef.current) {
+          if (data.stdout) {
+            terminal.write(data.stdout.replace(/\n/g, '\r\n'));
+          }
+          if (data.stderr) {
+            terminal.write(`\x1b[31m${data.stderr.replace(/\n/g, '\r\n')}\x1b[0m`);
+          }
+        }
+      });
+
+      stream.addEventListener('latency', (e: MessageEvent) => {
+        try {
+          const payload = JSON.parse(e.data);
+          if (typeof payload.latency === 'number') {
+            onLatencyUpdateRef.current(payload.latency);
+          }
+        } catch (_err) {
+          // ignore malformed latency payloads
+        }
+      });
     };
 
-    console.log('[TerminalEmulator] useEffect about to call connect()', { sessionId });
     connect();
 
     return () => {
-      console.log('[TerminalEmulator] useEffect cleanup', { sessionId });
       if (reconnectTimer) clearTimeout(reconnectTimer);
       if (stream) {
-        if (stream instanceof WebSocket) {
-          const h = wsHandlersRef.current;
-          if (h.message) stream.removeEventListener('message', h.message);
-          if (h.error) stream.removeEventListener('error', h.error);
-          if (h.close) stream.removeEventListener('close', h.close);
-        }
         provider.disconnectStream(stream);
       }
     };
-  }, [sessionId, ensurePrompt]);
+  }, [sessionId, processBackendOutput]);
   // NOTE: All callbacks (onStatusChange, onLatencyUpdate, onError, onSessionInfo) are accessed via stable refs.
   // This prevents reconnection when parent component re-renders with new callback instances.
-  // ensurePrompt is memoized with empty deps, so it's stable.
 
   // Focus handler
   const handleFocus = useCallback(() => {

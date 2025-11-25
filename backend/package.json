@@ -50,7 +50,6 @@
     "express-rate-limit": "^8.2.1",
     "helmet": "^8.1.0",
     "highlight.js": "^11.11.1",
-    "node-pty": "^1.0.0",
     "winston": "^3.11.0",
     "ws": "^8.18.3",
     "zod": "^3.22.4"
