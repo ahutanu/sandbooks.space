@@ -2,7 +2,6 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { ExecutableCodeBlockComponent } from './ExecutableCodeBlock';
 import type { NodeViewProps } from '@tiptap/react';
 import { vi } from 'vitest';
-import { hopxService } from '../../services/hopx';
 import { useNotesStore } from '../../store/notesStore';
 
 // Mocks
@@ -10,9 +9,15 @@ vi.mock('@tiptap/react', () => ({
     NodeViewWrapper: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
 
-vi.mock('../../services/hopx', () => ({
-    hopxService: {
-        executeCode: vi.fn(),
+const { mockExecuteCode } = vi.hoisted(() => ({
+    mockExecuteCode: vi.fn(),
+}));
+
+vi.mock('../../services/execution/executionModeManager', () => ({
+    executionModeManager: {
+        getExecutionProvider: () => ({
+            executeCode: mockExecuteCode,
+        }),
     },
 }));
 
@@ -20,9 +25,9 @@ const mockStore = {
     executionMode: 'cloud',
     cloudExecutionEnabled: true,
     sandboxStatus: 'healthy',
-    recreateSandbox: vi.fn(),
+    recreateSandbox: vi.fn().mockResolvedValue(undefined),
     setSandboxStatus: vi.fn(),
-    autoHealSandbox: vi.fn(),
+    autoHealSandbox: vi.fn().mockResolvedValue(true),
     activeNoteId: 'test-note',
     darkModeEnabled: false,
     executeCodeBlock: vi.fn(),
@@ -61,6 +66,7 @@ describe('ExecutableCodeBlockComponent', () => {
 
     beforeEach(() => {
         vi.clearAllMocks();
+        mockExecuteCode.mockReset();
     });
 
     it('renders correctly', () => {
@@ -111,10 +117,12 @@ describe('ExecutableCodeBlockComponent', () => {
     });
 
     it('shows execution result', () => {
+        // Execution result stdout is shown for non-Python languages (Python uses Jupyter outputs)
         const resultNode = {
             ...mockNode,
             attrs: {
                 ...mockNode.attrs,
+                language: 'javascript', // Non-Python language to test legacy output rendering
                 executionResult: {
                     stdout: 'Hello World',
                     executionTime: 100,
@@ -197,11 +205,17 @@ describe('ExecutableCodeBlockComponent', () => {
     });
 
     it('handles execution error', async () => {
-        (hopxService.executeCode as unknown as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error('Execution failed'));
+        mockExecuteCode.mockRejectedValueOnce(new Error('Execution failed'));
+
+        // Use non-Python language to test executionModeManager path (Python uses executeCell)
+        const jsNode = {
+            ...mockNode,
+            attrs: { ...mockNode.attrs, language: 'javascript' },
+        };
 
         render(
             <ExecutableCodeBlockComponent
-                node={mockNode}
+                node={jsNode}
                 updateAttributes={mockUpdateAttributes}
                 selected={false}
                 extension={{} as NodeViewProps['extension']}
@@ -263,16 +277,22 @@ describe('ExecutableCodeBlockComponent', () => {
     });
 
     it('handles successful execution with exit code 0', async () => {
-        (hopxService.executeCode as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        mockExecuteCode.mockResolvedValueOnce({
             stdout: 'Success',
             stderr: '',
             exitCode: 0,
             executionTime: 100,
         });
 
+        // Use non-Python language to test executionModeManager path (Python uses executeCell)
+        const jsNode = {
+            ...mockNode,
+            attrs: { ...mockNode.attrs, language: 'javascript' },
+        };
+
         render(
             <ExecutableCodeBlockComponent
-                node={mockNode}
+                node={jsNode}
                 updateAttributes={mockUpdateAttributes}
                 selected={false}
                 extension={{} as NodeViewProps['extension']}
@@ -357,10 +377,12 @@ describe('ExecutableCodeBlockComponent', () => {
     });
 
     it('shows stderr output', () => {
+        // Stderr output is shown for non-Python languages (Python uses Jupyter outputs)
         const resultNode = {
             ...mockNode,
             attrs: {
                 ...mockNode.attrs,
+                language: 'javascript', // Non-Python language to test legacy output rendering
                 executionResult: {
                     stdout: '',
                     stderr: 'Error message',
@@ -389,10 +411,12 @@ describe('ExecutableCodeBlockComponent', () => {
     });
 
     it('shows error output', () => {
+        // Error output is shown for non-Python languages (Python uses Jupyter outputs)
         const resultNode = {
             ...mockNode,
             attrs: {
                 ...mockNode.attrs,
+                language: 'javascript', // Non-Python language to test legacy output rendering
                 executionResult: {
                     stdout: '',
                     stderr: '',
@@ -444,10 +468,12 @@ describe('ExecutableCodeBlockComponent', () => {
     });
 
     it('shows rich outputs when present', () => {
+        // Rich outputs are shown for non-Python languages (Python uses Jupyter outputs)
         const resultNode = {
             ...mockNode,
             attrs: {
                 ...mockNode.attrs,
+                language: 'javascript', // Non-Python language to test legacy output rendering
                 executionResult: {
                     stdout: '',
                     stderr: '',
@@ -482,16 +508,22 @@ describe('ExecutableCodeBlockComponent', () => {
     });
 
     it('handles execution with sandbox status update', async () => {
-        (hopxService.executeCode as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        mockExecuteCode.mockResolvedValueOnce({
             stdout: 'Success',
             stderr: '',
             exitCode: 0,
             sandboxStatus: 'healthy',
         });
 
+        // Use non-Python language to test executionModeManager path (Python uses executeCell)
+        const jsNode = {
+            ...mockNode,
+            attrs: { ...mockNode.attrs, language: 'javascript' },
+        };
+
         render(
             <ExecutableCodeBlockComponent
-                node={mockNode}
+                node={jsNode}
                 updateAttributes={mockUpdateAttributes}
                 selected={false}
                 extension={{} as NodeViewProps['extension']}

@@ -101,9 +101,15 @@ export function convertNoteToIpynb(note: Note): string {
       const executionCount = node.attrs?.executionCount as number | null | undefined;
       const jupyterOutputs = node.attrs?.jupyterOutputs as unknown[] | undefined;
 
+      // Split code into lines, preserving newlines (Jupyter format)
+      const lines = code.split('\n');
+      const sourceLines = lines.map((line, i) =>
+        i < lines.length - 1 ? line + '\n' : line
+      );
+
       cells.push({
         cell_type: 'code',
-        source: code.split('\n'),
+        source: sourceLines,
         outputs: (jupyterOutputs as Record<string, unknown>[]) || [],
         execution_count: executionCount ?? null,
         metadata: {},
@@ -115,18 +121,30 @@ export function convertNoteToIpynb(note: Note): string {
       const text = extractText(node);
       const markdown = '#'.repeat(level) + ' ' + text;
 
+      // Split into lines, preserving newlines (Jupyter format)
+      const mdLines = markdown.split('\n');
+      const mdSourceLines = mdLines.map((line, i) =>
+        i < mdLines.length - 1 ? line + '\n' : line
+      );
+
       cells.push({
         cell_type: 'markdown',
-        source: markdown.split('\n'),
+        source: mdSourceLines,
         metadata: {}
       });
     } else if (node.type === 'paragraph') {
       // Paragraph → markdown cell
       const text = extractText(node);
       if (text.trim()) {
+        // Split into lines, preserving newlines (Jupyter format)
+        const pLines = text.split('\n');
+        const pSourceLines = pLines.map((line, i) =>
+          i < pLines.length - 1 ? line + '\n' : line
+        );
+
         cells.push({
           cell_type: 'markdown',
-          source: text.split('\n'),
+          source: pSourceLines,
           metadata: {}
         });
       }

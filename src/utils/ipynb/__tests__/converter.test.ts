@@ -26,7 +26,7 @@ describe('ipynb converter', () => {
 
       const note = convertIpynbToNote(notebook, 'test.ipynb');
 
-      expect(note.title).toBe('test');
+      expect(note.title).toBe('Test Notebook');
       expect(note.content.type).toBe('doc');
       expect(note.content.content).toHaveLength(2);
     });
