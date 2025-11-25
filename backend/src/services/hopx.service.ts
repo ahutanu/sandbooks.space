@@ -401,7 +401,11 @@ class HopxService {
       code === 'NOT_FOUND' ||
       normalizedMessage.includes('sandbox not found') ||
       normalizedMessage.includes('sandbox expired') ||
-      normalizedMessage.includes('sandbox is not running')
+      normalizedMessage.includes('sandbox is not running') ||
+      normalizedMessage.includes('invalid or expired') ||
+      normalizedMessage.includes('token expired') ||
+      normalizedMessage.includes('session expired') ||
+      normalizedMessage.includes('no longer available')
     ) {
       return {
         code,
@@ -519,18 +523,34 @@ class HopxService {
         sandboxId: this.sandboxId
       });
 
-      // If error indicates sandbox corruption/expiry/auth issues, reset state and fail fast (no retry)
-      // The next call to getHealthySandbox will handle recreation
+      // If error indicates sandbox corruption/expiry/auth issues, reset state and auto-retry once
+      // This handles the common case where sandbox expires while user is idle
       if (['corruption', 'auth', 'expired'].includes(classified.category)) {
-        logger.warn('Error indicates sandbox needs recreation - failing fast without retry', {
+        this.resetSandboxState();
+
+        // Auto-retry once with fresh sandbox (attempt 0 means this is first failure)
+        if (attempt === 0) {
+          logger.info('Sandbox expired or invalid - auto-recovering with fresh sandbox', {
+            category: classified.category,
+            originalError: classified.message
+          });
+
+          // Small delay to avoid hammering the API
+          await new Promise(resolve => setTimeout(resolve, 500));
+
+          // Retry with fresh sandbox (getHealthySandbox will create new one)
+          return this.executeWithRecovery(code, language, attempt + 1);
+        }
+
+        // Already retried once, now fail
+        logger.error('Sandbox recovery failed after auto-retry', {
           category: classified.category
         });
-        this.resetSandboxState();
-        this.recordFailure(); // Record failure for circuit breaker
-        throw error; // Fail fast - no retries for sandbox-level errors
+        this.recordFailure();
+        throw error;
       }
 
-      // Retry logic for transient errors only (network, timeout, unknown)
+      // Retry logic for transient errors (network, timeout, unknown)
       if (attempt < maxAttempts - 1 && classified.recoverable) {
         const delay = HEALTH_CHECK_CONFIG.RETRY_DELAYS_MS[attempt];
 

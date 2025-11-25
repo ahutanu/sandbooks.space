@@ -12,6 +12,7 @@ export type OnboardingEvent =
   | 'terminal_toggled'
   | 'markdown_imported'
   | 'docs_reset'
+  | 'docs_updated'
   | 'payload_link_opened'
   | 'payload_note_saved';
 

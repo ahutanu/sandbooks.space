@@ -114,9 +114,9 @@ export const InstallPrompt = () => {
       <div className="glass-modal rounded-2xl p-6 shadow-elevation-4 border border-stone-200/20 dark:border-stone-700/20">
         <div className="flex items-start gap-4">
           <div className="flex-shrink-0">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-elevation-2">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-stone-700 to-stone-800 dark:from-stone-200 dark:to-stone-300 flex items-center justify-center shadow-elevation-2">
               <svg
-                className="w-6 h-6 text-white"
+                className="w-6 h-6 text-white dark:text-stone-800"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -142,7 +142,7 @@ export const InstallPrompt = () => {
             <div className="flex items-center gap-2">
               <button
                 onClick={handleInstall}
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 active:scale-[0.98]"
+                className="px-4 py-2 text-sm font-medium text-white dark:text-stone-900 bg-stone-800 dark:bg-stone-200 hover:bg-stone-900 dark:hover:bg-white rounded-lg transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-500 focus-visible:ring-offset-2 active:scale-[0.98]"
               >
                 Install
               </button>

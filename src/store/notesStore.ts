@@ -8,7 +8,7 @@ import { storageManager, storageService } from '../services/storageManager';
 import { extractTitleFromContent } from '../utils/titleExtraction';
 import { getNextTagColor } from '../utils/tagColors';
 import { showToast as toast } from '../utils/toast';
-import { createDefaultDocumentation } from '../utils/defaultDocumentation';
+import { createDefaultDocumentation, DOCS_VERSION, SYSTEM_DOC_TITLES } from '../utils/defaultDocumentation';
 import { recordOnboardingEvent, clearOnboardingEvents } from '../utils/onboardingMetrics';
 import { fetchWithTimeout } from '../utils/fetchWithTimeout';
 import { cloudTerminalProvider } from '../services/terminal/index';
@@ -103,6 +103,9 @@ export const useNotesStore = create<NotesStore>((set, get) => ({
   payloadError: null,
   isLoadingPayload: false,
   isShareModalOpen: false,
+  // Docs version state
+  docsUpdateAvailable: false,
+  currentDocsVersion: null,
 
   addNote: (note: Note) => {
     set((state) => {
@@ -875,6 +878,73 @@ export const useNotesStore = create<NotesStore>((set, get) => ({
   setShareModalOpen: (open: boolean) => {
     set({ isShareModalOpen: open });
   },
+
+  // Docs version management methods
+  checkDocsVersion: () => {
+    const storedVersion = localStorage.getItem('sandbooks-docs-version');
+    const currentVersion = storedVersion ? parseInt(storedVersion, 10) : null;
+    const dismissedVersion = localStorage.getItem('sandbooks-docs-update-dismissed');
+
+    set({ currentDocsVersion: currentVersion });
+
+    // Check if update is available (and not dismissed)
+    if (currentVersion !== null && currentVersion < DOCS_VERSION) {
+      // Only show notification if user hasn't dismissed this version
+      if (dismissedVersion !== String(DOCS_VERSION)) {
+        set({ docsUpdateAvailable: true });
+      }
+    }
+  },
+
+  updateSystemDocs: () => {
+    const state = get();
+    const { notes } = state;
+
+    // Identify system docs (by isSystemDoc flag or well-known titles)
+    const isSystemDoc = (note: Note): boolean => {
+      if (note.isSystemDoc) return true;
+      // Fallback: check against well-known titles for backward compatibility
+      return SYSTEM_DOC_TITLES.includes(note.title as typeof SYSTEM_DOC_TITLES[number]);
+    };
+
+    // Separate user notes from system docs
+    const userNotes = notes.filter((note) => !isSystemDoc(note));
+
+    // Create fresh system docs
+    const newSystemDocs = createDefaultDocumentation();
+
+    // Merge: new system docs first, then user notes
+    const mergedNotes = [...newSystemDocs, ...userNotes];
+
+    // Save to storage
+    storageService.saveAllNotes(mergedNotes);
+
+    // Update localStorage version
+    localStorage.setItem('sandbooks-docs-version', String(DOCS_VERSION));
+
+    // Update state
+    set({
+      notes: mergedNotes,
+      tags: deriveTagsFromNotes(mergedNotes),
+      activeNoteId: mergedNotes[0]?.id ?? null,
+      docsUpdateAvailable: false,
+      currentDocsVersion: DOCS_VERSION,
+    });
+
+    recordOnboardingEvent('docs_updated', {
+      fromVersion: state.currentDocsVersion,
+      toVersion: DOCS_VERSION,
+      userNotesPreserved: userNotes.length,
+    });
+
+    toast.success(`Documentation updated. ${userNotes.length} personal note${userNotes.length !== 1 ? 's' : ''} preserved.`);
+  },
+
+  dismissDocsUpdate: () => {
+    // User chose to keep old docs - store dismissed version to avoid re-prompting
+    localStorage.setItem('sandbooks-docs-update-dismissed', String(DOCS_VERSION));
+    set({ docsUpdateAvailable: false });
+  },
 }));
 
 // Apply dark mode class on initial load
@@ -983,11 +1053,14 @@ export const createNewNote = (): Note => ({
     const docNotes = createDefaultDocumentation();
     await storageManager.saveAllNotes(docNotes);
     localStorage.setItem('sandbooks-first-run-complete', 'true');
+    // Set initial docs version for new users
+    localStorage.setItem('sandbooks-docs-version', String(DOCS_VERSION));
 
     useNotesStore.setState({
       notes: docNotes,
       tags: deriveTagsFromNotes(docNotes),
-      activeNoteId: docNotes[0]?.id || null
+      activeNoteId: docNotes[0]?.id || null,
+      currentDocsVersion: DOCS_VERSION,
     });
   } else if (notes.length > 0) {
     useNotesStore.setState({
@@ -995,6 +1068,9 @@ export const createNewNote = (): Note => ({
       tags: deriveTagsFromNotes(notes),
       activeNoteId: notes[0]?.id || null
     });
+
+    // Check for docs version updates (for returning users)
+    useNotesStore.getState().checkDocsVersion();
   }
 
 })();

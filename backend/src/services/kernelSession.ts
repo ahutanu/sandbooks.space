@@ -57,8 +57,14 @@ export class KernelSession {
   }
 
   /**
-   * Execute code cell with rich output capture
-   * Wraps user code to capture matplotlib figures, pandas DataFrames, and other outputs
+   * Execute code cell using IPython's native InteractiveShell
+   *
+   * This provides full support for:
+   * - Shell commands (!pip install, !ls, etc.)
+   * - Line magics (%timeit, %pip, %cd, %who, etc.)
+   * - Cell magics (%%bash, %%time, %%writefile, etc.)
+   * - Rich output capture (matplotlib, pandas, etc.)
+   * - Variable persistence across cells
    */
   public async executeCell(code: string): Promise<ExecuteCellResponse> {
     const startTime = Date.now();
@@ -74,12 +80,13 @@ export class KernelSession {
     this.updateActivity();
 
     try {
-      // Wrap user code to capture rich outputs
+      // Use IPython's InteractiveShell for native magic support
       // This wrapper:
-      // 1. Captures stdout/stderr
-      // 2. Detects and saves matplotlib figures as base64 PNG
-      // 3. Detects pandas DataFrames and gets HTML representation
-      // 4. Handles errors gracefully
+      // 1. Creates/reuses a persistent IPython shell instance
+      // 2. Captures stdout/stderr via custom streams
+      // 3. Captures rich outputs (matplotlib, pandas, etc.)
+      // 4. Handles shell commands (!), line magics (%), and cell magics (%%)
+      // 5. Returns results in Jupyter notebook format
       const wrappedCode = `
 import sys
 import io
@@ -98,8 +105,27 @@ _outputs = []
 _user_code_error = None
 
 try:
-    # Execute user code
-    exec(${JSON.stringify(code)})
+    # Initialize or get existing IPython shell
+    from IPython.core.interactiveshell import InteractiveShell
+
+    # Create shell instance if not exists (persists across calls in same sandbox)
+    if not hasattr(InteractiveShell, '_sandbooks_instance') or InteractiveShell._sandbooks_instance is None:
+        InteractiveShell._sandbooks_instance = InteractiveShell.instance()
+        # Configure for non-interactive use
+        InteractiveShell._sandbooks_instance.colors = 'NoColor'
+
+    _shell = InteractiveShell._sandbooks_instance
+
+    # Set matplotlib backend for non-GUI rendering
+    try:
+        import matplotlib
+        matplotlib.use('Agg')
+    except ImportError:
+        pass
+
+    # Execute the user code via IPython
+    _user_code = ${JSON.stringify(code)}
+    _result = _shell.run_cell(_user_code, store_history=True, silent=False)
 
     # Capture matplotlib figures if any
     try:
@@ -113,45 +139,73 @@ try:
                 img_b64 = base64.b64encode(buf.read()).decode('utf-8')
                 _outputs.append({
                     "output_type": "display_data",
-                    "data": {
-                        "image/png": img_b64
-                    },
+                    "data": {"image/png": img_b64},
                     "metadata": {}
                 })
                 plt.close(fig)
     except ImportError:
         pass
-    except Exception as e:
-        # Matplotlib capture failed, but don't fail the whole execution
+    except Exception:
         pass
 
-    # Check if last expression was a DataFrame or had rich repr
-    try:
-        if '_' in locals():
-            last_val = locals()['_']
-            if hasattr(last_val, '_repr_html_'):
-                _outputs.append({
-                    "output_type": "execute_result",
-                    "data": {
-                        "text/html": last_val._repr_html_(),
-                        "text/plain": str(last_val)
-                    },
-                    "metadata": {},
-                    "execution_count": ${this.executionCount + 1}
-                })
-            elif hasattr(last_val, '_repr_png_'):
-                png_data = last_val._repr_png_()
+    # Handle execution result (last expression value)
+    if _result.result is not None:
+        _val = _result.result
+        _result_data = {"text/plain": repr(_val)}
+
+        # Check for HTML representation (pandas, etc.)
+        if hasattr(_val, '_repr_html_'):
+            try:
+                html = _val._repr_html_()
+                if html:
+                    _result_data["text/html"] = html
+            except Exception:
+                pass
+
+        # Check for PNG representation
+        if hasattr(_val, '_repr_png_'):
+            try:
+                png_data = _val._repr_png_()
                 if png_data:
-                    _outputs.append({
-                        "output_type": "execute_result",
-                        "data": {
-                            "image/png": base64.b64encode(png_data).decode('utf-8')
-                        },
-                        "metadata": {},
-                        "execution_count": ${this.executionCount + 1}
-                    })
-    except:
-        pass
+                    _result_data["image/png"] = base64.b64encode(png_data).decode('utf-8')
+            except Exception:
+                pass
+
+        # Check for SVG representation
+        if hasattr(_val, '_repr_svg_'):
+            try:
+                svg_data = _val._repr_svg_()
+                if svg_data:
+                    _result_data["image/svg+xml"] = svg_data
+            except Exception:
+                pass
+
+        _outputs.append({
+            "output_type": "execute_result",
+            "data": _result_data,
+            "metadata": {},
+            "execution_count": ${this.executionCount + 1}
+        })
+
+    # Check for errors in execution
+    if not _result.success:
+        if _result.error_before_exec:
+            err = _result.error_before_exec
+            _user_code_error = {
+                "output_type": "error",
+                "ename": type(err).__name__,
+                "evalue": str(err),
+                "traceback": [str(err)]
+            }
+        elif _result.error_in_exec:
+            err = _result.error_in_exec
+            import traceback as tb
+            _user_code_error = {
+                "output_type": "error",
+                "ename": type(err).__name__,
+                "evalue": str(err),
+                "traceback": tb.format_exception(type(err), err, err.__traceback__)
+            }
 
 except Exception as e:
     import traceback

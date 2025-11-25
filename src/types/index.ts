@@ -27,6 +27,12 @@ export interface Note {
   // codeBlocks removed: now using ExecutableCodeBlock nodes in content
   // Kept temporarily as optional for backward compatibility during migration
   codeBlocks?: CodeBlock[];
+  /**
+   * Marks this note as a system documentation note.
+   * System docs can be updated without affecting user-created notes.
+   * Optional for backward compatibility - existing notes will be identified by title.
+   */
+  isSystemDoc?: boolean;
 }
 
 export interface ExecutionResult {
@@ -128,6 +134,9 @@ export interface NotesStore {
   payloadError: PayloadErrorInfo | null;
   isLoadingPayload: boolean;
   isShareModalOpen: boolean;
+  // Docs version state
+  docsUpdateAvailable: boolean;
+  currentDocsVersion: number | null;
   addNote: (note: Note) => void;
   updateNote: (id: string, updates: Partial<Note>) => void;
   deleteNote: (id: string) => void;
@@ -176,4 +185,8 @@ export interface NotesStore {
   clearPayload: () => void;
   savePayloadToNotes: () => Note | null;
   setShareModalOpen: (open: boolean) => void;
+  // Docs update methods
+  checkDocsVersion: () => void;
+  updateSystemDocs: () => void;
+  dismissDocsUpdate: () => void;
 }

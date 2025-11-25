@@ -43,7 +43,7 @@ import { useTypewriterMode } from '../../hooks/useTypewriterMode';
 import { useNotesStore } from '../../store/notesStore';
 import type { Note } from '../../types';
 import type { JSONContent } from '@tiptap/core';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { LinkPopover } from './LinkPopover';
 import { BubbleMenu } from './BubbleMenu';
 import { FloatingMenu } from './FloatingMenu';
@@ -61,6 +61,7 @@ export const Editor = ({ note, onUpdate, readOnly = false }: EditorProps) => {
   const [isDraggingFile, setIsDraggingFile] = useState(false);
   const [droppedFiles, setDroppedFiles] = useState<FileList | null>(null);
   const [showLinkPopover, setShowLinkPopover] = useState(false);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const editor = useEditor({
     extensions: [
@@ -206,6 +207,14 @@ export const Editor = ({ note, onUpdate, readOnly = false }: EditorProps) => {
       }
     }
   }, [editor, note.id, note.content]); // Re-run when note changes OR editor instance changes
+
+  // Reset scroll position when switching notes
+  // This prevents stale scroll positions from persisting across note changes
+  useEffect(() => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = 0;
+    }
+  }, [note.id]);
 
   // Auto-focus editor when note is created (modern UX pattern)
   useEffect(() => {
@@ -377,6 +386,7 @@ export const Editor = ({ note, onUpdate, readOnly = false }: EditorProps) => {
 
       {/* Editor Content - scrollable content area */}
       <div
+        ref={scrollContainerRef}
         className="flex-1 overflow-y-auto bg-white dark:bg-stone-900 relative"
         onDragOver={handleEditorDragOver}
         onDragLeave={handleEditorDragLeave}

@@ -93,60 +93,41 @@ export const AnalyticsConsent = () => {
   return (
     <div className="fixed bottom-6 left-6 z-50 max-w-md animate-fadeInSlideUp">
       <div className="glass-modal rounded-xl p-4 shadow-elevation-3 border border-stone-200/20 dark:border-stone-700/20">
-        <div className="flex items-start gap-3">
-          <div className="flex-1 min-w-0">
-            <p className="text-sm text-stone-700 dark:text-stone-300 leading-normal mb-3">
-              Sandbooks wants to send minimal telemetry: feature usage and performance metrics, no personal content. This helps us prioritize fixes and improvements. No ads, no cross-site tracking, no creepy stuff.
-            </p>
-            
-            {!showDisableOption ? (
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={handleDismiss}
-                  className="px-3 py-1.5 text-xs font-medium text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-lg transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-500 focus-visible:ring-offset-2 active:scale-[0.98]"
-                >
-                  Accept
-                </button>
-                <button
-                  onClick={() => setShowDisableOption(true)}
-                  className="px-3 py-1.5 text-xs font-medium text-stone-500 dark:text-stone-500 hover:text-stone-700 dark:hover:text-stone-400 rounded-lg transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-500 focus-visible:ring-offset-2 active:scale-[0.98]"
-                >
-                  Disable
-                </button>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={handleDisable}
-                  className="px-3 py-1.5 text-xs font-medium text-white bg-stone-700 dark:bg-stone-600 hover:bg-stone-800 dark:hover:bg-stone-500 rounded-lg transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-500 focus-visible:ring-offset-2 active:scale-[0.98]"
-                >
-                  Disable Analytics
-                </button>
-                <button
-                  onClick={() => setShowDisableOption(false)}
-                  className="px-3 py-1.5 text-xs font-medium text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-lg transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-500 focus-visible:ring-offset-2 active:scale-[0.98]"
-                >
-                  Cancel
-                </button>
-              </div>
-            )}
-          </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm text-stone-700 dark:text-stone-300 leading-normal mb-3">
+            Sandbooks wants to send minimal telemetry: feature usage and performance metrics, no personal content. This helps us prioritize fixes and improvements. No ads, no cross-site tracking, no creepy stuff.
+          </p>
 
-          {!showDisableOption && (
-            <button
-              onClick={handleDismiss}
-              className="flex-shrink-0 p-1 text-stone-400 hover:text-stone-600 dark:hover:text-stone-300 rounded-lg hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors duration-200"
-              aria-label="Accept"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
-            </button>
+          {!showDisableOption ? (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleDismiss}
+                className="px-3 py-1.5 text-xs font-medium bg-stone-800 dark:bg-stone-200 text-white dark:text-stone-900 hover:bg-stone-900 dark:hover:bg-white rounded-lg transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-500 focus-visible:ring-offset-2 active:scale-[0.98]"
+              >
+                Accept
+              </button>
+              <button
+                onClick={() => setShowDisableOption(true)}
+                className="px-3 py-1.5 text-xs font-medium text-stone-500 dark:text-stone-500 hover:text-stone-700 dark:hover:text-stone-400 rounded-lg transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-500 focus-visible:ring-offset-2 active:scale-[0.98]"
+              >
+                Disable
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleDisable}
+                className="px-3 py-1.5 text-xs font-medium text-white bg-stone-700 dark:bg-stone-600 hover:bg-stone-800 dark:hover:bg-stone-500 rounded-lg transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-500 focus-visible:ring-offset-2 active:scale-[0.98]"
+              >
+                Disable Analytics
+              </button>
+              <button
+                onClick={() => setShowDisableOption(false)}
+                className="px-3 py-1.5 text-xs font-medium text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-lg transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-500 focus-visible:ring-offset-2 active:scale-[0.98]"
+              >
+                Cancel
+              </button>
+            </div>
           )}
         </div>
       </div>

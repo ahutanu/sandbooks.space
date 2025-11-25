@@ -5,6 +5,7 @@ import { Sidebar } from './components/Sidebar/Sidebar';
 import { Editor } from './components/Editor/Editor';
 import { EditorModeIndicator } from './components/ui/EditorModeIndicator';
 import { AnalyticsConsent } from './components/ui/AnalyticsConsent';
+import { DocsUpdateNotification } from './components/ui/DocsUpdateNotification';
 import { PayloadViewerBanner, PayloadLoading, PayloadError, ShareModal } from './components/Share';
 import { isCurrentUrlPayload } from './utils/payload';
 import type { JSONContent } from '@tiptap/react';
@@ -192,6 +193,8 @@ function App() {
       <EditorModeIndicator />
       {/* Analytics consent banner (minimal, non-intrusive) */}
       <AnalyticsConsent />
+      {/* Docs update notification (shows when built-in guides have been updated) */}
+      <DocsUpdateNotification />
       {/* Share modal */}
       {isShareModalOpen && activeNote && (
         <ShareModal

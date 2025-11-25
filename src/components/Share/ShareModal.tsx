@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useNotesStore } from '../../store/notesStore';
 import { showToast as toast } from '../../utils/toast';
 import {
@@ -33,6 +33,14 @@ export const ShareModal = ({ note, onClose }: ShareModalProps) => {
   const [error, setError] = useState<{ message: string; suggestions: string[] } | null>(null);
   const [copied, setCopied] = useState(false);
   const { setShareModalOpen } = useNotesStore();
+  const modalRef = useRef<HTMLDivElement>(null);
+  const previousActiveElement = useRef<Element | null>(null);
+
+  // Handle close - defined early so it can be used in effects
+  const handleClose = useCallback(() => {
+    setShareModalOpen(false);
+    onClose();
+  }, [onClose, setShareModalOpen]);
 
   // Generate the share link whenever expiry changes
   const generateLink = useCallback(() => {
@@ -62,6 +70,59 @@ export const ShareModal = ({ note, onClose }: ShareModalProps) => {
     generateLink();
   }, [generateLink]);
 
+  // Escape key handler
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        handleClose();
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [handleClose]);
+
+  // Focus trap and restore focus on close
+  useEffect(() => {
+    previousActiveElement.current = document.activeElement;
+
+    // Focus the first focusable element in the modal
+    const focusableElements = modalRef.current?.querySelectorAll<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    if (focusableElements && focusableElements.length > 0) {
+      focusableElements[0].focus();
+    }
+
+    // Trap focus within modal
+    const handleTabKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab' || !modalRef.current) return;
+
+      const focusable = modalRef.current.querySelectorAll<HTMLElement>(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      );
+      const firstElement = focusable[0];
+      const lastElement = focusable[focusable.length - 1];
+
+      if (e.shiftKey && document.activeElement === firstElement) {
+        e.preventDefault();
+        lastElement?.focus();
+      } else if (!e.shiftKey && document.activeElement === lastElement) {
+        e.preventDefault();
+        firstElement?.focus();
+      }
+    };
+
+    document.addEventListener('keydown', handleTabKey);
+    return () => {
+      document.removeEventListener('keydown', handleTabKey);
+      // Restore focus to previous element
+      if (previousActiveElement.current instanceof HTMLElement) {
+        previousActiveElement.current.focus();
+      }
+    };
+  }, []);
+
   // Build full URL
   const shareUrl = useMemo(() => {
     if (!encodeResult) return '';
@@ -81,12 +142,6 @@ export const ShareModal = ({ note, onClose }: ShareModalProps) => {
       toast.error('Failed to copy link');
     }
   }, [shareUrl]);
-
-  // Handle close
-  const handleClose = useCallback(() => {
-    setShareModalOpen(false);
-    onClose();
-  }, [onClose, setShareModalOpen]);
 
   // Count content stats
   const contentStats = useMemo(() => {
@@ -118,10 +173,19 @@ export const ShareModal = ({ note, onClose }: ShareModalProps) => {
       onClick={(e) => {
         if (e.target === e.currentTarget) handleClose();
       }}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="share-modal-title"
     >
-      <div className="bg-white dark:bg-stone-900 rounded-xl border border-stone-200 dark:border-stone-800 p-6 max-w-lg w-full mx-4 shadow-elevation-4 animate-scaleIn">
+      <div
+        ref={modalRef}
+        className="bg-white dark:bg-stone-900 rounded-xl border border-stone-200 dark:border-stone-800 p-6 max-w-lg w-full mx-4 shadow-elevation-4 animate-scaleIn"
+      >
         <div className="flex items-center justify-between mb-5">
-          <h3 className="text-lg font-bold text-stone-900 dark:text-stone-50 tracking-tight">
+          <h3
+            id="share-modal-title"
+            className="text-lg font-bold text-stone-900 dark:text-stone-50 tracking-tight"
+          >
             Share Note
           </h3>
           <button

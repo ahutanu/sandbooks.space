@@ -144,7 +144,8 @@ describe('HopxService executeCode', () => {
     const { hopxService } = await loadService(firstSandbox, {}, createMock as unknown as MockFn);
 
     await hopxService.executeCode('1+1', 'javascript');
-    (hopxService as unknown as { lastHealthCheck: number }).lastHealthCheck = Date.now() - 40000;
+    // Cache duration is 60 seconds, so set lastHealthCheck to 70 seconds ago to trigger health check
+    (hopxService as unknown as { lastHealthCheck: number }).lastHealthCheck = Date.now() - 70000;
 
     const healthySandbox = await hopxService.getSandbox();
 

@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { showToast as toast } from '../../utils/toast';
 
 interface ImageUploadModalProps {
@@ -15,6 +15,9 @@ export const ImageUploadModal = ({ onInsert, onClose, initialFiles }: ImageUploa
   const [isProcessing, setIsProcessing] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const modalRef = useRef<HTMLDivElement>(null);
+  const dropZoneRef = useRef<HTMLDivElement>(null);
+  const previousActiveElement = useRef<Element | null>(null);
 
   const validateImageUrl = useCallback((url: string): boolean => {
     // Basic URL validation
@@ -108,6 +111,59 @@ export const ImageUploadModal = ({ onInsert, onClose, initialFiles }: ImageUploa
     }
   }, [initialFiles, handleFileUpload]);
 
+  // Global Escape key handler
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !isProcessing) {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [onClose, isProcessing]);
+
+  // Focus trap and restore focus on close
+  useEffect(() => {
+    previousActiveElement.current = document.activeElement;
+
+    // Trap focus within modal
+    const handleTabKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab' || !modalRef.current) return;
+
+      const focusable = modalRef.current.querySelectorAll<HTMLElement>(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      );
+      const firstElement = focusable[0];
+      const lastElement = focusable[focusable.length - 1];
+
+      if (e.shiftKey && document.activeElement === firstElement) {
+        e.preventDefault();
+        lastElement?.focus();
+      } else if (!e.shiftKey && document.activeElement === lastElement) {
+        e.preventDefault();
+        firstElement?.focus();
+      }
+    };
+
+    document.addEventListener('keydown', handleTabKey);
+    return () => {
+      document.removeEventListener('keydown', handleTabKey);
+      // Restore focus to previous element
+      if (previousActiveElement.current instanceof HTMLElement) {
+        previousActiveElement.current.focus();
+      }
+    };
+  }, []);
+
+  // Keyboard handler for drop zone (accessibility)
+  const handleDropZoneKeyDown = useCallback((e: ReactKeyboardEvent) => {
+    if ((e.key === 'Enter' || e.key === ' ') && !isProcessing) {
+      e.preventDefault();
+      fileInputRef.current?.click();
+    }
+  }, [isProcessing]);
+
   const handleUrlInsert = useCallback(() => {
     if (!imageUrl.trim()) {
       toast.error('Please enter an image URL');
@@ -148,11 +204,20 @@ export const ImageUploadModal = ({ onInsert, onClose, initialFiles }: ImageUploa
     <div
       className="fixed inset-0 bg-stone-900/40 dark:bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 animate-fadeIn"
       onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
+        if (e.target === e.currentTarget && !isProcessing) onClose();
       }}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="image-upload-modal-title"
     >
-      <div className="bg-white dark:bg-stone-900 rounded-xl border border-stone-200 dark:border-stone-800 p-6 max-w-md w-full mx-4 shadow-elevation-4 animate-scaleIn">
-        <h3 className="text-lg font-bold mb-5 text-stone-900 dark:text-stone-50 tracking-tight">
+      <div
+        ref={modalRef}
+        className="bg-white dark:bg-stone-900 rounded-xl border border-stone-200 dark:border-stone-800 p-6 max-w-md w-full mx-4 shadow-elevation-4 animate-scaleIn"
+      >
+        <h3
+          id="image-upload-modal-title"
+          className="text-lg font-bold mb-5 text-stone-900 dark:text-stone-50 tracking-tight"
+        >
           Insert Image
         </h3>
 
@@ -202,11 +267,16 @@ export const ImageUploadModal = ({ onInsert, onClose, initialFiles }: ImageUploa
 
             {/* Drag & Drop Zone */}
             <div
+              ref={dropZoneRef}
+              role="button"
+              tabIndex={isProcessing ? -1 : 0}
+              aria-label="Drop zone for image upload. Click or press Enter to select files"
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
+              onKeyDown={handleDropZoneKeyDown}
               className={`
-                relative border-2 border-dashed rounded-xl p-6 text-center transition-all duration-200 group
+                relative border-2 border-dashed rounded-xl p-6 text-center transition-all duration-200 group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50 focus-visible:border-blue-500
                 ${isDragging
                   ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
                   : 'border-stone-200 dark:border-stone-700 hover:border-stone-400 dark:hover:border-stone-600 hover:bg-stone-50 dark:hover:bg-stone-800/50'

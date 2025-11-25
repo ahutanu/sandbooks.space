@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import clsx from 'clsx';
 
 interface PopoverProps {
@@ -19,16 +19,36 @@ export const Popover = ({
     className
 }: PopoverProps) => {
     const [uncontrolledIsOpen, setUncontrolledIsOpen] = useState(false);
+    const [isClosing, setIsClosing] = useState(false);
     const popoverRef = useRef<HTMLDivElement>(null);
+    const contentRef = useRef<HTMLDivElement>(null);
 
     const isControlled = controlledIsOpen !== undefined;
     const isOpen = isControlled ? controlledIsOpen : uncontrolledIsOpen;
+
     const setIsOpen = useCallback((value: boolean) => {
-        if (!isControlled) {
-            setUncontrolledIsOpen(value);
+        if (!value && (isControlled ? controlledIsOpen : uncontrolledIsOpen)) {
+            // Trigger exit animation
+            setIsClosing(true);
+            setTimeout(() => {
+                setIsClosing(false);
+                if (!isControlled) {
+                    setUncontrolledIsOpen(false);
+                }
+                onOpenChange?.(false);
+            }, 150); // Match animation duration
+        } else {
+            if (!isControlled) {
+                setUncontrolledIsOpen(value);
+            }
+            onOpenChange?.(value);
         }
-        onOpenChange?.(value);
-    }, [isControlled, onOpenChange]);
+    }, [isControlled, controlledIsOpen, uncontrolledIsOpen, onOpenChange]);
+
+    // Visible state accounts for closing animation
+    const isVisible = useMemo(() => {
+        return isOpen || isClosing;
+    }, [isOpen, isClosing]);
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -37,11 +57,20 @@ export const Popover = ({
             }
         };
 
+        const handleEscapeKey = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                setIsOpen(false);
+            }
+        };
+
         if (isOpen) {
             document.addEventListener('mousedown', handleClickOutside);
+            document.addEventListener('keydown', handleEscapeKey);
         }
         return () => {
             document.removeEventListener('mousedown', handleClickOutside);
+            document.removeEventListener('keydown', handleEscapeKey);
         };
     }, [isOpen, setIsOpen]);
 
@@ -57,12 +86,16 @@ export const Popover = ({
                 {trigger}
             </div>
 
-            {isOpen && (
+            {isVisible && (
                 <div
+                    ref={contentRef}
                     className={clsx(
                         "absolute top-full mt-2 z-50 min-w-[200px]",
                         "bg-white dark:bg-stone-900 rounded-xl shadow-xl border border-stone-200 dark:border-stone-800",
-                        "animate-in fade-in zoom-in-95 duration-200",
+                        "transition-all duration-150 ease-out",
+                        isClosing
+                            ? "opacity-0 scale-95"
+                            : "opacity-100 scale-100 animate-in fade-in zoom-in-95 duration-200",
                         alignmentStyles[align],
                         className
                     )}

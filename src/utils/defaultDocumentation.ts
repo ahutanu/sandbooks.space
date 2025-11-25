@@ -6,10 +6,48 @@
  * - Clear, concise writing
  * - Interactive examples
  * - Complete feature coverage
+ *
+ * VERSION HISTORY:
+ * - 1: Initial documentation (9 notes)
+ * - 2: Future updates...
+ *
+ * When updating documentation:
+ * 1. Increment DOCS_VERSION
+ * 2. Update DOCS_UPDATED_AT
+ * 3. Users will be notified to update their system docs
  */
 
 import { nanoid } from 'nanoid';
 import type { Note } from '../types';
+
+/**
+ * Documentation version number.
+ * Increment this when making changes to default documentation.
+ * Users with older versions will see an update notification.
+ */
+export const DOCS_VERSION = 1;
+
+/**
+ * Date when documentation was last updated.
+ * Used for display purposes in the update notification.
+ */
+export const DOCS_UPDATED_AT = '2025-01-15';
+
+/**
+ * Well-known titles for system documentation notes.
+ * Used as a fallback to identify system docs when isSystemDoc flag is missing.
+ */
+export const SYSTEM_DOC_TITLES = [
+  'Welcome',
+  'Writing Basics',
+  'Rich Formatting',
+  'Media & Embeds',
+  'Code & Terminal',
+  'Organization',
+  'Focus & Productivity',
+  'Data & Export',
+  'Install as App',
+] as const;
 
 export function createDefaultDocumentation(): Note[] {
   const now = Date.now();
@@ -26,6 +64,7 @@ export function createDefaultDocumentation(): Note[] {
   notes.push({
     id: nanoid(),
     title: 'Welcome',
+    isSystemDoc: true,
     content: {
       type: 'doc',
       content: [
@@ -77,6 +116,7 @@ export function createDefaultDocumentation(): Note[] {
   notes.push({
     id: nanoid(),
     title: 'Writing Basics',
+    isSystemDoc: true,
     content: {
       type: 'doc',
       content: [
@@ -155,6 +195,7 @@ export function createDefaultDocumentation(): Note[] {
   notes.push({
     id: nanoid(),
     title: 'Rich Formatting',
+    isSystemDoc: true,
     content: {
       type: 'doc',
       content: [
@@ -244,6 +285,7 @@ export function createDefaultDocumentation(): Note[] {
   notes.push({
     id: nanoid(),
     title: 'Media & Embeds',
+    isSystemDoc: true,
     content: {
       type: 'doc',
       content: [
@@ -328,6 +370,7 @@ export function createDefaultDocumentation(): Note[] {
   notes.push({
     id: nanoid(),
     title: 'Code & Terminal',
+    isSystemDoc: true,
     content: {
       type: 'doc',
       content: [
@@ -399,6 +442,7 @@ export function createDefaultDocumentation(): Note[] {
   notes.push({
     id: nanoid(),
     title: 'Organization',
+    isSystemDoc: true,
     content: {
       type: 'doc',
       content: [
@@ -472,6 +516,7 @@ export function createDefaultDocumentation(): Note[] {
   notes.push({
     id: nanoid(),
     title: 'Focus & Productivity',
+    isSystemDoc: true,
     content: {
       type: 'doc',
       content: [
@@ -546,6 +591,7 @@ export function createDefaultDocumentation(): Note[] {
   notes.push({
     id: nanoid(),
     title: 'Data & Export',
+    isSystemDoc: true,
     content: {
       type: 'doc',
       content: [
@@ -630,6 +676,7 @@ export function createDefaultDocumentation(): Note[] {
   notes.push({
     id: nanoid(),
     title: 'Install as App',
+    isSystemDoc: true,
     content: {
       type: 'doc',
       content: [

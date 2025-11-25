@@ -11,8 +11,11 @@ interface ToastProps {
 export const Toast = ({ t, type = 'custom', message }: ToastProps) => {
     return (
         <div
+            role="alert"
+            aria-live={type === 'error' ? 'assertive' : 'polite'}
+            aria-atomic="true"
             className={clsx(
-                'max-w-md w-full bg-white dark:bg-stone-800 shadow-lg rounded-lg pointer-events-auto flex ring-1 ring-black ring-opacity-5 dark:ring-white dark:ring-opacity-10 transition-all duration-300 ease-out transform',
+                'max-w-md w-full bg-white dark:bg-stone-800 shadow-lg rounded-lg pointer-events-auto flex ring-1 ring-stone-900/5 dark:ring-white/10 transition-all duration-300 ease-out transform',
                 t.visible ? 'translate-y-0 opacity-100' : 'translate-y-2 opacity-0'
             )}
         >
