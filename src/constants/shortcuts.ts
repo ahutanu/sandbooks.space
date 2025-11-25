@@ -51,6 +51,7 @@ export const SHORTCUTS: Shortcut[] = [
     // Smart Writing
     { id: 'NEW_PARAGRAPH', keys: ['shift', 'enter'], action: 'New paragraph (24px spacing)', category: 'Smart Writing' },
     { id: 'LINE_BREAK', keys: ['enter'], action: 'Line break (minimal spacing)', category: 'Smart Writing' },
+    { id: 'SELECT_ALL', keys: ['mod', 'a'], action: 'Select all text in editor', category: 'Smart Writing' },
     { id: 'DELETE_LINE', keys: ['mod', 'shift', 'k'], action: 'Delete current line', category: 'Smart Writing' },
     { id: 'DUPLICATE_LINE', keys: ['mod', 'shift', 'd'], action: 'Duplicate current line', category: 'Smart Writing' },
     { id: 'INCREASE_INDENT', keys: ['mod', ']'], action: 'Increase indent', category: 'Smart Writing' },

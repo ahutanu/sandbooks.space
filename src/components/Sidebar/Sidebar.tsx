@@ -17,9 +17,9 @@ export const Sidebar = ({ isMobile = false, onClose }: { isMobile?: boolean; onC
   if (notes.length === 0) {
     return (
       <div className={clsx(
-        "bg-white dark:bg-stone-900 border-r border-stone-200 dark:border-stone-800 p-8 flex flex-col items-center justify-center self-stretch",
+        "bg-white dark:bg-stone-900 border-r border-stone-200 dark:border-stone-800 p-6 flex flex-col items-center justify-center self-stretch",
         isMobile ? "w-full h-full justify-center" : "hidden md:flex transition-[width] duration-300 ease-in-out",
-        !isMobile && (isOpen ? "w-80" : "w-0 hidden")
+        !isMobile && (isOpen ? "w-64 lg:w-72" : "w-0 hidden")
       )}>
         <div className="text-center">
           <Logo className="w-16 h-16 mx-auto text-stone-300 dark:text-stone-600 mb-6" />
@@ -34,9 +34,9 @@ export const Sidebar = ({ isMobile = false, onClose }: { isMobile?: boolean; onC
     <aside className={clsx(
       "bg-white dark:bg-stone-900 border-r border-stone-200 dark:border-stone-800 overflow-y-auto flex-shrink-0",
       isMobile ? "w-full h-full" : "hidden md:block transition-[width,opacity] duration-300 ease-in-out",
-      !isMobile && (isOpen ? "w-80" : "w-0 opacity-0")
+      !isMobile && (isOpen ? "w-64 lg:w-72" : "w-0 opacity-0")
     )}>
-      <div className="pt-4 px-4 pb-8">
+      <div className="pt-3 px-3 pb-6">
         {isMobile && (
           <div className="flex items-center justify-between mb-6 pl-2 pr-1">
             <div className="flex items-center gap-3">
@@ -61,7 +61,7 @@ export const Sidebar = ({ isMobile = false, onClose }: { isMobile?: boolean; onC
             <div
               key={note.id}
               className={clsx(
-                'px-3 md:px-4 py-3.5 md:py-3.5 mb-1 mx-2 rounded-lg transition-all duration-200 ease-out group relative touch-manipulation',
+                'px-2.5 md:px-3 py-2.5 md:py-2.5 mb-0.5 mx-1 rounded-lg transition-all duration-200 ease-out group relative touch-manipulation',
                 activeNoteId === note.id
                   ? 'bg-stone-100 dark:bg-stone-800 text-stone-900 dark:text-stone-100'
                   : 'hover:bg-stone-50 dark:hover:bg-stone-800/40 text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200 active:bg-stone-100 dark:active:bg-stone-800/60'

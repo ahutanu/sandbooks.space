@@ -208,6 +208,12 @@ export const SmartWritingBehaviors = Extension.create({
         return this.editor.commands.setParagraph();
       },
 
+      // Select all editor content only (Cmd+A / Ctrl+A)
+      // Prevents browser default which selects entire page
+      'Mod-a': () => {
+        return this.editor.commands.selectAll();
+      },
+
       // Increase indent (Cmd+])
       'Mod-]': () => {
         const { state } = this.editor;

@@ -9,7 +9,7 @@ import {
     LuType, LuSuperscript, LuSubscript,
     LuAlignLeft, LuAlignCenter, LuAlignRight, LuAlignJustify,
     LuList, LuListOrdered, LuSquareCheck,
-    LuLink, LuTable, LuImage
+    LuLink, LuTable, LuImage, LuCode
 } from 'react-icons/lu';
 
 interface EditorToolbarProps {
@@ -26,8 +26,8 @@ export const EditorToolbar = ({ editor, onAddImage, onLinkClick }: EditorToolbar
     const [colorMode, setColorMode] = useState<'text' | 'highlight'>('text');
 
     return (
-        <div className="flex-shrink-0 border-b border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 px-4 py-3 z-10 overflow-x-auto no-scrollbar">
-            <div className="max-w-4xl mx-auto w-full flex items-center gap-1 flex-nowrap md:flex-wrap min-w-max md:min-w-0">
+        <div className="flex-shrink-0 border-b border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 px-3 py-2 z-10 overflow-x-auto no-scrollbar">
+            <div className="max-w-5xl mx-auto w-full flex items-center gap-0.5 flex-nowrap md:flex-wrap min-w-max md:min-w-0">
                 {/* Text Formatting Group */}
                 <div className="flex items-center gap-0.5 bg-stone-100 dark:bg-stone-800/50 p-1 rounded-lg">
                     <Tooltip content="Bold" shortcut="⌘B">
@@ -100,7 +100,7 @@ export const EditorToolbar = ({ editor, onAddImage, onLinkClick }: EditorToolbar
                     </Tooltip>
                 </div>
 
-                <div className="w-px h-6 bg-stone-200 dark:bg-stone-800 mx-2" />
+                <div className="w-px h-5 bg-stone-200 dark:bg-stone-800 mx-1.5" />
 
                 {/* Font Group */}
                 <div className="flex items-center gap-0.5 bg-stone-100 dark:bg-stone-800/50 p-1 rounded-lg">
@@ -117,7 +117,7 @@ export const EditorToolbar = ({ editor, onAddImage, onLinkClick }: EditorToolbar
                     </Tooltip>
                 </div>
 
-                <div className="w-px h-6 bg-stone-200 dark:bg-stone-800 mx-2" />
+                <div className="w-px h-5 bg-stone-200 dark:bg-stone-800 mx-1.5" />
 
                 {/* Superscript/Subscript Group */}
                 <div className="flex items-center gap-0.5 bg-stone-100 dark:bg-stone-800/50 p-1 rounded-lg">
@@ -144,7 +144,7 @@ export const EditorToolbar = ({ editor, onAddImage, onLinkClick }: EditorToolbar
                     </Tooltip>
                 </div>
 
-                <div className="w-px h-6 bg-stone-200 dark:bg-stone-800 mx-2" />
+                <div className="w-px h-5 bg-stone-200 dark:bg-stone-800 mx-1.5" />
 
                 {/* Alignment Group */}
                 <div className="flex items-center gap-0.5 bg-stone-100 dark:bg-stone-800/50 p-1 rounded-lg">
@@ -193,7 +193,7 @@ export const EditorToolbar = ({ editor, onAddImage, onLinkClick }: EditorToolbar
                     </Tooltip>
                 </div>
 
-                <div className="w-px h-6 bg-stone-200 dark:bg-stone-800 mx-2" />
+                <div className="w-px h-5 bg-stone-200 dark:bg-stone-800 mx-1.5" />
 
                 {/* Lists Group */}
                 <div className="flex items-center gap-0.5 bg-stone-100 dark:bg-stone-800/50 p-1 rounded-lg">
@@ -231,7 +231,7 @@ export const EditorToolbar = ({ editor, onAddImage, onLinkClick }: EditorToolbar
                     </Tooltip>
                 </div>
 
-                <div className="w-px h-6 bg-stone-200 dark:bg-stone-800 mx-2" />
+                <div className="w-px h-5 bg-stone-200 dark:bg-stone-800 mx-1.5" />
 
                 {/* Insert Group */}
                 <div className="flex items-center gap-0.5 bg-stone-100 dark:bg-stone-800/50 p-1 rounded-lg">
@@ -243,6 +243,17 @@ export const EditorToolbar = ({ editor, onAddImage, onLinkClick }: EditorToolbar
                             aria-label="Insert Link"
                         >
                             <LuLink className="w-4 h-4" />
+                        </Button>
+                    </Tooltip>
+
+                    <Tooltip content="Insert Code Block" shortcut="⌘⌥C">
+                        <Button
+                            variant={editor.isActive('executableCodeBlock') ? 'default' : 'ghost'}
+                            size="icon"
+                            onClick={() => editor.chain().focus().setExecutableCodeBlock().run()}
+                            aria-label="Insert Code Block"
+                        >
+                            <LuCode className="w-4 h-4" />
                         </Button>
                     </Tooltip>
 

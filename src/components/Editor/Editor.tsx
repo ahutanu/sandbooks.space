@@ -92,7 +92,7 @@ export const Editor = ({ note, onUpdate, readOnly = false }: EditorProps) => {
         inline: false, // Block-level display
         allowBase64: true,
         HTMLAttributes: {
-          class: 'rounded-lg max-w-[650px] w-full h-auto my-8 mx-auto block shadow-elevation-2',
+          class: 'rounded-lg max-w-full w-full h-auto my-6 mx-auto block shadow-elevation-2',
         },
       }),
       TaskList.configure({
@@ -126,7 +126,7 @@ export const Editor = ({ note, onUpdate, readOnly = false }: EditorProps) => {
       Table.configure({
         resizable: true,
         HTMLAttributes: {
-          class: 'w-full border-collapse my-6 overflow-x-auto',
+          class: 'w-full border-collapse my-4 overflow-x-auto',
         },
       }),
       TableRow,
@@ -143,22 +143,22 @@ export const Editor = ({ note, onUpdate, readOnly = false }: EditorProps) => {
       // Gapcursor and Dropcursor are included in StarterKit v3 by default
       YouTube.configure({
         HTMLAttributes: {
-          class: 'w-full max-w-[650px] mx-auto my-8 aspect-video rounded-lg shadow-elevation-2',
+          class: 'w-full max-w-3xl mx-auto my-6 aspect-video rounded-lg shadow-elevation-2',
         },
       }),
       Video.configure({
         HTMLAttributes: {
-          class: 'w-full max-w-[650px] mx-auto my-8 aspect-video rounded-lg shadow-elevation-2',
+          class: 'w-full max-w-3xl mx-auto my-6 aspect-video rounded-lg shadow-elevation-2',
         },
       }),
       Audio.configure({
         HTMLAttributes: {
-          class: 'w-full max-w-[650px] mx-auto my-6 bg-stone-50 dark:bg-stone-800/50 border border-stone-200 dark:border-stone-700 rounded-lg p-4 shadow-elevation-1',
+          class: 'w-full max-w-3xl mx-auto my-4 bg-stone-50 dark:bg-stone-800/50 border border-stone-200 dark:border-stone-700 rounded-lg p-3 shadow-elevation-1',
         },
       }),
       File.configure({
         HTMLAttributes: {
-          class: 'w-full max-w-[650px] mx-auto my-6 bg-stone-50 dark:bg-stone-800/50 border border-stone-200 dark:border-stone-700 rounded-lg p-4 shadow-elevation-1',
+          class: 'w-full max-w-3xl mx-auto my-4 bg-stone-50 dark:bg-stone-800/50 border border-stone-200 dark:border-stone-700 rounded-lg p-3 shadow-elevation-1',
         },
       }),
       Mention.configure({
@@ -188,7 +188,7 @@ export const Editor = ({ note, onUpdate, readOnly = false }: EditorProps) => {
     },
     editorProps: {
       attributes: {
-        class: 'prose prose-stone max-w-none focus:outline-none min-h-full px-4 md:px-12 py-6 md:py-12',
+        class: 'prose prose-stone max-w-none focus:outline-none min-h-full px-4 md:px-6 py-4 md:py-6',
         style: 'font-family: "JetBrains Mono Variable", "SF Mono", "Menlo", "Monaco", "Courier New", monospace;',
       },
     },
@@ -409,7 +409,7 @@ export const Editor = ({ note, onUpdate, readOnly = false }: EditorProps) => {
           </div>
         )}
 
-        <div className="flex-1 max-w-[650px] mx-auto w-full relative min-h-[50vh]">
+        <div className="flex-1 max-w-4xl mx-auto w-full relative min-h-[50vh]">
           {/* Empty State Watermark */}
           {editor && editor.isEmpty && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none opacity-[0.03] dark:opacity-[0.05]">
@@ -440,13 +440,13 @@ export const Editor = ({ note, onUpdate, readOnly = false }: EditorProps) => {
         </div>
 
         {/* Minimal tags at bottom */}
-        <div className="max-w-[650px] mx-auto w-full">
+        <div className="max-w-4xl mx-auto w-full">
           <MinimalTagDisplay noteId={note.id} tags={note.tags || []} />
         </div>
 
-        {/* Character Count */}
+        {/* Character Count - positioned bottom-left to avoid overlap with reset notes button */}
         {editor && editor.storage.characterCount && (
-          <div className="fixed bottom-4 right-4 bg-white/90 dark:bg-stone-900/90 backdrop-blur-sm border border-stone-200 dark:border-stone-700 rounded-lg px-3 py-1.5 shadow-elevation-1 z-40">
+          <div className="fixed bottom-4 left-4 md:left-[17rem] lg:left-[19rem] bg-white/90 dark:bg-stone-900/90 backdrop-blur-sm border border-stone-200 dark:border-stone-700 rounded-lg px-3 py-1.5 shadow-elevation-1 z-40">
             <div className="text-xs text-stone-500 dark:text-stone-400 font-mono space-x-2">
               <span>{editor.storage.characterCount.words()} words</span>
               <span>•</span>

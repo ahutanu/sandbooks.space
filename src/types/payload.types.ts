@@ -200,8 +200,8 @@ export const PAYLOAD_CONSTANTS = {
   MIN_VERSION: 1 as const,
   /** Magic byte for payload identification */
   MAGIC_BYTE: 0x53, // 'S' for Sandbooks
-  /** Maximum token length in characters */
-  MAX_TOKEN_LENGTH: 2000,
+  /** Maximum token length in characters (8KB safe for all browsers/servers) */
+  MAX_TOKEN_LENGTH: 8000,
   /** Maximum decompressed size in bytes */
   MAX_DECOMPRESSED_SIZE: 10 * 1024 * 1024, // 10MB
   /** Maximum node count */
