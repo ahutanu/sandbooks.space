@@ -1,15 +1,51 @@
+import { useCallback } from 'react';
 import { useNotesStore } from '../../store/notesStore';
 import { formatTimestamp } from '../../utils/formatTimestamp';
+import { serializeToMarkdown } from '../../utils/markdownSerializer';
 import clsx from 'clsx';
 import { Logo } from '../ui/Logo';
+import { ContextMenu } from '../ui/ContextMenu';
+import type { ContextMenuItem } from '../ui/ContextMenu';
+import { VscCopy, VscTrash } from 'react-icons/vsc';
+import { useCopyToClipboard } from '../../hooks/useCopyToClipboard';
+import { showToast } from '../../utils/toast';
 
 export const Sidebar = ({ isMobile = false, onClose }: { isMobile?: boolean; onClose?: () => void }) => {
   const { notes, activeNoteId, isSidebarOpen, setActiveNote, deleteNote } = useNotesStore();
+
+  const { copy } = useCopyToClipboard({
+    onSuccess: () => showToast.success('Copied to clipboard'),
+    onError: (err) => showToast.error(err.message || 'Failed to copy'),
+  });
 
   const handleDelete = (e: React.MouseEvent, noteId: string) => {
     e.stopPropagation();
     deleteNote(noteId);
   };
+
+  const getContextMenuItems = useCallback((noteId: string, _noteTitle: string): ContextMenuItem[] => {
+    const note = notes.find(n => n.id === noteId);
+    return [
+      {
+        id: 'copy-markdown',
+        label: 'Copy as Markdown',
+        icon: <VscCopy size={14} />,
+        onClick: () => {
+          if (note?.content) {
+            const markdown = serializeToMarkdown(note.content);
+            copy(markdown);
+          }
+        },
+      },
+      {
+        id: 'delete',
+        label: 'Delete',
+        icon: <VscTrash size={14} />,
+        variant: 'danger',
+        onClick: () => deleteNote(noteId),
+      },
+    ];
+  }, [notes, copy, deleteNote]);
 
   // Mobile sidebar is always "open" when rendered (controlled by parent overlay)
   const isOpen = isMobile ? true : isSidebarOpen;
@@ -31,7 +67,7 @@ export const Sidebar = ({ isMobile = false, onClose }: { isMobile?: boolean; onC
   }
 
   return (
-    <aside className={clsx(
+    <aside aria-label="Notes sidebar" className={clsx(
       "bg-white dark:bg-stone-900 border-r border-stone-200 dark:border-stone-800 overflow-y-auto flex-shrink-0",
       isMobile ? "w-full h-full" : "hidden md:block transition-[width,opacity] duration-300 ease-in-out",
       !isMobile && (isOpen ? "w-64 lg:w-72" : "w-0 opacity-0")
@@ -58,18 +94,18 @@ export const Sidebar = ({ isMobile = false, onClose }: { isMobile?: boolean; onC
           const timestamp = formatTimestamp(note.updatedAt);
 
           return (
-            <div
-              key={note.id}
-              className={clsx(
-                'px-2.5 md:px-3 py-2.5 md:py-2.5 mb-0.5 mx-1 rounded-lg transition-all duration-200 ease-out group relative touch-manipulation',
-                activeNoteId === note.id
-                  ? 'bg-stone-100 dark:bg-stone-800 text-stone-900 dark:text-stone-100'
-                  : 'hover:bg-stone-50 dark:hover:bg-stone-800/40 text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200 active:bg-stone-100 dark:active:bg-stone-800/60'
-              )}
-            >
+            <ContextMenu key={note.id} items={getContextMenuItems(note.id, note.title)}>
+              <div
+                className={clsx(
+                  'px-2.5 md:px-3 py-2.5 md:py-2.5 mb-0.5 mx-1 rounded-lg transition-all duration-200 ease-out group relative touch-manipulation',
+                  activeNoteId === note.id
+                    ? 'bg-stone-100 dark:bg-stone-800 text-stone-900 dark:text-stone-100'
+                    : 'hover:bg-stone-50 dark:hover:bg-stone-800/40 text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200 active:bg-stone-100 dark:active:bg-stone-800/60'
+                )}
+              >
               {/* Active Indicator */}
               {activeNoteId === note.id && (
-                <div className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-1 bg-blue-600 rounded-r-full" />
+                <div className="absolute left-0 top-1/2 h-5 w-1 bg-blue-600 rounded-r-full animate-slideInFromLeft" />
               )}
               <div className="flex items-start justify-between gap-2">
                 <button
@@ -90,7 +126,7 @@ export const Sidebar = ({ isMobile = false, onClose }: { isMobile?: boolean; onC
                     dateTime={timestamp.datetime}
                     aria-label={`Last edited ${timestamp.absolute}`}
                     title={timestamp.absolute}
-                    className="block text-xs mt-1 pl-2 text-stone-400 dark:text-stone-500"
+                    className="block text-xs mt-1 pl-2 text-stone-500 dark:text-stone-400"
                   >
                     {timestamp.relative}
                   </time>
@@ -143,7 +179,8 @@ export const Sidebar = ({ isMobile = false, onClose }: { isMobile?: boolean; onC
                   </svg>
                 </button>
               </div>
-            </div>
+              </div>
+            </ContextMenu>
           );
         })}
       </div>

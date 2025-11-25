@@ -147,6 +147,33 @@ module.exports = {
           '0%, 100%': { opacity: '1' },
           '50%': { opacity: '0.5' },
         },
+        // Sidebar active indicator slide-in with bounce
+        slideInFromLeft: {
+          '0%': { transform: 'translateX(-100%) translateY(-50%)', opacity: '0' },
+          '60%': { transform: 'translateX(10%) translateY(-50%)', opacity: '1' },
+          '100%': { transform: 'translateX(0) translateY(-50%)', opacity: '1' },
+        },
+        // Content cross-fade with subtle lift
+        contentFadeIn: {
+          '0%': { opacity: '0', transform: 'translateY(8px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        // Execution pulse glow
+        executionPulse: {
+          '0%, 100%': { boxShadow: '0 0 0 0 rgba(16, 185, 129, 0.5)' },
+          '50%': { boxShadow: '0 0 0 6px rgba(16, 185, 129, 0)' },
+        },
+        // Success checkmark pop
+        successPop: {
+          '0%': { transform: 'scale(0)', opacity: '0' },
+          '60%': { transform: 'scale(1.2)', opacity: '1' },
+          '100%': { transform: 'scale(1)', opacity: '1' },
+        },
+        // Terminal reconnect bounce
+        retryBounce: {
+          '0%, 100%': { transform: 'translateY(0)' },
+          '50%': { transform: 'translateY(-3px)' },
+        },
       },
       animation: {
         fadeIn: 'fadeIn 300ms cubic-bezier(0.34, 1.56, 0.64, 1)',      // Spring physics
@@ -155,6 +182,12 @@ module.exports = {
         fadeInSlideUp: 'fadeInSlideUp 400ms cubic-bezier(0.34, 1.56, 0.64, 1)',
         pulseGlow: 'pulseGlow 1.5s smooth infinite',
         pulse: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        // New expressive animations
+        slideInFromLeft: 'slideInFromLeft 400ms cubic-bezier(0.34, 1.56, 0.64, 1)',
+        contentFadeIn: 'contentFadeIn 300ms cubic-bezier(0.34, 1.56, 0.64, 1)',
+        executionPulse: 'executionPulse 1.5s ease-out infinite',
+        successPop: 'successPop 400ms cubic-bezier(0.34, 1.56, 0.64, 1)',
+        retryBounce: 'retryBounce 600ms ease-in-out infinite',
       },
     },
   },
@@ -166,10 +199,10 @@ module.exports = {
           fontFamily: '"JetBrains Mono Variable", "SF Mono", "Menlo", "Monaco", "Courier New", monospace',
         },
         '.prose h1': {
-          '@apply text-4xl font-bold text-stone-900 dark:text-stone-50 mt-12 mb-6 leading-tight tracking-tight': {},
+          '@apply text-4xl font-bold text-stone-950 dark:text-stone-50 mt-12 mb-6 leading-tight tracking-tight': {},
         },
         '.prose h2': {
-          '@apply text-3xl font-bold text-stone-900 dark:text-stone-50 mt-10 mb-5 leading-tight tracking-tight': {},
+          '@apply text-3xl font-bold text-stone-950 dark:text-stone-50 mt-10 mb-5 leading-tight tracking-tight': {},
         },
         '.prose h3': {
           '@apply text-2xl font-semibold text-stone-800 dark:text-stone-100 mt-8 mb-4 leading-snug': {},

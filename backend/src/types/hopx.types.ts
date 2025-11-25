@@ -35,7 +35,7 @@ export interface HopxSandboxInfo {
 export interface HopxSandbox {
   sandboxId: string;
   init: () => Promise<void>;
-  runCode: (code: string, opts: { language: string }) => Promise<HopxCommandResult>;
+  runCode: (code: string, opts: { language: string; timeout?: number }) => Promise<HopxCommandResult>;
   getHealth: () => Promise<HopxHealth>;
   getAgentMetrics: () => Promise<HopxMetrics>;
   getInfo: () => Promise<HopxSandboxInfo>;

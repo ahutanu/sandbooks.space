@@ -2,7 +2,7 @@ import React from 'react';
 import clsx from 'clsx';
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-    variant?: 'default' | 'ghost' | 'outline' | 'secondary' | 'danger';
+    variant?: 'default' | 'ghost' | 'outline' | 'secondary' | 'danger' | 'primary-subtle';
     size?: 'sm' | 'md' | 'lg' | 'icon';
     isLoading?: boolean;
 }
@@ -17,13 +17,14 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
             outline: "border border-stone-200 dark:border-stone-700 bg-transparent hover:bg-stone-100 dark:hover:bg-stone-800 text-stone-700 dark:text-stone-300",
             secondary: "bg-stone-100 text-stone-900 hover:bg-stone-200 dark:bg-stone-800 dark:text-stone-100 dark:hover:bg-stone-700",
             danger: "bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/30",
+            'primary-subtle': "bg-stone-100 text-stone-700 hover:bg-emerald-50 hover:text-emerald-700 dark:bg-stone-800 dark:text-stone-300 dark:hover:bg-emerald-900/30 dark:hover:text-emerald-300 border border-stone-200 dark:border-stone-700 hover:border-emerald-300 dark:hover:border-emerald-700",
         };
 
         const sizes = {
             sm: "h-8 px-3 text-xs",
             md: "h-10 px-4 py-2 text-sm",
             lg: "h-12 px-6 text-base",
-            icon: "h-10 w-10 p-2",
+            icon: "h-11 w-11 p-2.5",
         };
 
         return (

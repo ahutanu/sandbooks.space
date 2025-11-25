@@ -104,6 +104,47 @@ ul[data-type="taskList"] li[data-checked="true"]>div {
   font-family: 'JetBrains Mono Variable', 'SF Mono', 'Monaco', 'Inconsolata', 'Consolas', 'Courier New', monospace;
 }
 
+/* ====================================================================
+   UNIFIED SELECTION STYLING - Consistent selection colors across app
+   ==================================================================== */
+
+/* Editor (ProseMirror/TipTap) selection */
+.ProseMirror::selection,
+.ProseMirror *::selection {
+  background-color: rgba(59, 130, 246, 0.3); /* blue-500 at 30% */
+}
+
+.dark .ProseMirror::selection,
+.dark .ProseMirror *::selection {
+  background-color: rgba(96, 165, 250, 0.35); /* blue-400 at 35% for dark */
+}
+
+/* Code output selection */
+.code-output::selection,
+pre::selection,
+.code-output *::selection,
+pre *::selection {
+  background-color: rgba(59, 130, 246, 0.25);
+}
+
+.dark .code-output::selection,
+.dark pre::selection,
+.dark .code-output *::selection,
+.dark pre *::selection {
+  background-color: rgba(96, 165, 250, 0.30);
+}
+
+/* Notebook output selection */
+.notebook-outputs::selection,
+.notebook-outputs *::selection {
+  background-color: rgba(59, 130, 246, 0.25);
+}
+
+.dark .notebook-outputs::selection,
+.dark .notebook-outputs *::selection {
+  background-color: rgba(96, 165, 250, 0.30);
+}
+
 /* Glass Morphism Effects - Performance Optimized with Gradient Borders */
 
 /* CSS Variables for Performance & Maintainability */
@@ -475,4 +516,71 @@ ul[data-type="taskList"] li[data-checked="true"]>div {
   /* blue-500 */
   display: inline-block !important;
   width: 0.5em !important;
+}
+
+/* ====================================================================
+   CODE BLOCK SCROLL INDICATORS - Visual cues for scrollable content
+   ==================================================================== */
+
+/* Scroll shadow indicators for code blocks */
+.code-scroll-container {
+  position: relative;
+}
+
+.code-scroll-shadow-left,
+.code-scroll-shadow-right {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 24px;
+  pointer-events: none;
+  z-index: 5;
+  opacity: 0;
+  transition: opacity 200ms ease-out;
+}
+
+.code-scroll-shadow-left {
+  left: 0;
+  background: linear-gradient(to right, rgba(0, 0, 0, 0.08) 0%, transparent 100%);
+}
+
+.code-scroll-shadow-right {
+  right: 0;
+  background: linear-gradient(to left, rgba(0, 0, 0, 0.08) 0%, transparent 100%);
+}
+
+.code-scroll-shadow-left.visible,
+.code-scroll-shadow-right.visible {
+  opacity: 1;
+}
+
+/* Dark mode shadows */
+.dark .code-scroll-shadow-left {
+  background: linear-gradient(to right, rgba(255, 255, 255, 0.05) 0%, transparent 100%);
+}
+
+.dark .code-scroll-shadow-right {
+  background: linear-gradient(to left, rgba(255, 255, 255, 0.05) 0%, transparent 100%);
+}
+
+/* ====================================================================
+   HIGH CONTRAST MODE SUPPORT - Windows High Contrast and forced colors
+   ==================================================================== */
+
+@media (forced-colors: active) {
+  .glass-modal,
+  .glass-backdrop,
+  .glass-card {
+    background: Canvas;
+    border: 1px solid CanvasText;
+  }
+
+  button,
+  [role="button"] {
+    border: 1px solid ButtonText;
+  }
+
+  a {
+    text-decoration: underline;
+  }
 }

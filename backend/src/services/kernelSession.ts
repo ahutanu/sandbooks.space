@@ -257,8 +257,8 @@ if _user_code_error:
 print(json.dumps({"outputs": _final_outputs}))
 `;
 
-      // Execute wrapped code
-      const result = await this.sandbox.runCode(wrappedCode, { language: 'python' });
+      // Execute wrapped code with 5-minute timeout for long operations like pip install
+      const result = await this.sandbox.runCode(wrappedCode, { language: 'python', timeout: 300 });
 
       // Parse outputs from JSON
       let outputs: JupyterOutput[] = [];

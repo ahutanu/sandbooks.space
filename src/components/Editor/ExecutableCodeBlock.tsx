@@ -1,18 +1,29 @@
 import { NodeViewWrapper } from '@tiptap/react';
 import type { NodeViewProps } from '@tiptap/react';
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import type { Language, ExecutionResult } from '../../types';
 import { useNotesStore } from '../../store/notesStore';
 import { showToast as toast } from '../../utils/toast';
 import { executionModeManager } from '../../services/execution/executionModeManager';
 import { VscClearAll } from 'react-icons/vsc';
 import { Button } from '../ui/Button';
+import { CopyButton } from '../ui/CopyButton';
 import { LanguageIcon } from './LanguageIcon';
 import { CodeMirrorEditor } from './CodeMirrorEditor';
 import { recordOnboardingEvent } from '../../utils/onboardingMetrics';
 import { NotebookOutput } from '../Notebook/NotebookOutput';
 import { executeCell } from '../../services/notebook';
 import type { JupyterOutput } from '../../types/notebook';
+
+// Format elapsed time with appropriate units
+const formatElapsedTime = (ms: number): string => {
+  if (ms < 1000) return `${ms}ms`;
+  const seconds = Math.floor(ms / 1000);
+  if (seconds < 60) return `${seconds}s`;
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+  return `${minutes}m ${remainingSeconds}s`;
+};
 
 const LANGUAGES: Language[] = ['python', 'javascript', 'typescript', 'bash', 'go'];
 
@@ -21,7 +32,28 @@ export const ExecutableCodeBlockComponent = ({ node, updateAttributes }: NodeVie
   const autoHealSandbox = useNotesStore((state) => state.autoHealSandbox);
   const activeNoteId = useNotesStore((state) => state.activeNoteId);
   const [isExecuting, setIsExecuting] = useState(false);
+  const [elapsedTime, setElapsedTime] = useState(0);
+  const startTimeRef = useRef<number | null>(null);
   const language = (node.attrs.language as Language) || 'python';
+
+  // Live elapsed time counter during execution
+  useEffect(() => {
+    let intervalId: ReturnType<typeof setInterval>;
+    if (isExecuting) {
+      startTimeRef.current = Date.now();
+      setElapsedTime(0);
+      intervalId = setInterval(() => {
+        if (startTimeRef.current) {
+          setElapsedTime(Date.now() - startTimeRef.current);
+        }
+      }, 100);
+    } else {
+      startTimeRef.current = null;
+    }
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [isExecuting]);
   const executionResult = node.attrs.executionResult as ExecutionResult | undefined;
   const executionCount = node.attrs.executionCount as number | undefined;
   const jupyterOutputs = node.attrs.jupyterOutputs as JupyterOutput[] | undefined;
@@ -182,8 +214,15 @@ export const ExecutableCodeBlockComponent = ({ node, updateAttributes }: NodeVie
             <div className="flex items-center gap-2">
               {/* Execution Counter Badge */}
               {language === 'python' && (
-                <span className="text-xs font-mono text-stone-400 bg-stone-600/30 px-2 py-0.5 rounded" title="Execution order">
-                  [{executionCount || ' '}]
+                <span
+                  className={`text-xs font-mono px-2 py-0.5 rounded ${
+                    executionCount
+                      ? "text-stone-600 dark:text-stone-300 bg-stone-200/50 dark:bg-stone-700/50"
+                      : "text-stone-400 dark:text-stone-500 bg-stone-100 dark:bg-stone-800/50"
+                  }`}
+                  title={executionCount ? `Execution #${executionCount}` : "Not yet executed"}
+                >
+                  [{executionCount ?? '·'}]
                 </span>
               )}
               <LanguageIcon language={language} size={20} className="text-emerald-400 flex-shrink-0" />
@@ -209,6 +248,15 @@ export const ExecutableCodeBlockComponent = ({ node, updateAttributes }: NodeVie
 
           {/* Action Buttons - Icon Only */}
           <div className="flex items-center gap-1.5">
+            {/* Copy Code Button */}
+            <CopyButton
+              text={code}
+              size="icon"
+              variant="ghost"
+              className="text-stone-600 dark:text-stone-100 hover:bg-stone-200 dark:hover:bg-stone-600/50"
+              aria-label="Copy code"
+              title="Copy code"
+            />
             {executionResult && (
               <Button
                 variant="ghost"
@@ -236,16 +284,16 @@ export const ExecutableCodeBlockComponent = ({ node, updateAttributes }: NodeVie
               </Button>
             )}
             <Button
-              variant="default"
+              variant="primary-subtle"
               onClick={handleExecute}
               disabled={isExecuting || sandboxStatus === 'creating'}
-              className="gap-2"
+              className="gap-2 hover:shadow-md"
               aria-label={isExecuting ? 'Code is executing' : 'Run code'}
               aria-busy={isExecuting}
               title={isExecuting ? 'Running...' : 'Run code'}
             >
               {isExecuting ? (
-                <div className="w-5 h-5 border-2 border-emerald-500 dark:border-white border-t-transparent rounded-full animate-spin" />
+                <div className="w-5 h-5 border-2 border-emerald-500 dark:border-emerald-400 border-t-transparent rounded-full animate-spin" />
               ) : (
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
@@ -269,8 +317,37 @@ export const ExecutableCodeBlockComponent = ({ node, updateAttributes }: NodeVie
           />
         </div>
 
+        {/* Live Running Indicator */}
+        {isExecuting && (
+          <div className="border-t border-stone-200 dark:border-stone-700 animate-fadeInSlideUp">
+            <div className="px-5 py-4 bg-gradient-to-r from-blue-50 to-emerald-50 dark:from-blue-900/20 dark:to-emerald-900/20">
+              <div className="flex items-center gap-3">
+                {/* Animated dots */}
+                <div className="flex gap-1">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" style={{ animationDelay: '0ms' }} />
+                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" style={{ animationDelay: '150ms' }} />
+                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" style={{ animationDelay: '300ms' }} />
+                </div>
+                <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
+                  Running...
+                </span>
+                <span className="text-sm font-mono text-stone-600 dark:text-stone-400 tabular-nums">
+                  {formatElapsedTime(elapsedTime)}
+                </span>
+              </div>
+              {elapsedTime > 5000 && (
+                <p className="mt-2 text-xs text-stone-500 dark:text-stone-400">
+                  {elapsedTime > 30000
+                    ? 'Long-running operation (pip install, network requests, etc.)...'
+                    : 'This may take a moment...'}
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Execution Output */}
-        {(jupyterOutputs || executionResult) && (
+        {!isExecuting && (jupyterOutputs || executionResult) && (
           <div className="border-t border-stone-200 dark:border-stone-700 animate-fadeInSlideUp">
             {/* Jupyter Outputs (for Python) */}
             {language === 'python' && jupyterOutputs && (
@@ -284,13 +361,21 @@ export const ExecutableCodeBlockComponent = ({ node, updateAttributes }: NodeVie
               <>
                 {/* Stdout */}
                 {executionResult.stdout && (
-                  <div className="px-5 py-4 bg-white dark:bg-stone-800 border-b border-stone-100 dark:border-stone-700">
+                  <div className="output-section group/output relative px-5 py-4 bg-white dark:bg-stone-800 border-b border-stone-100 dark:border-stone-700">
                     <div className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 mb-3 flex items-center gap-2">
                       <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                       </svg>
                       Output
                     </div>
+                    <CopyButton
+                      text={executionResult.stdout}
+                      size="sm"
+                      variant="icon-only"
+                      className="output-copy-btn absolute top-3 right-3 opacity-0 group-hover/output:opacity-100 focus-visible:opacity-100 transition-opacity duration-150"
+                      aria-label="Copy output"
+                      title="Copy output"
+                    />
                     <pre className="code-output text-base font-mono text-stone-800 dark:text-stone-200 whitespace-pre-wrap bg-stone-50 dark:bg-stone-900 p-3 rounded-lg border border-stone-200 dark:border-stone-700 max-h-[400px] overflow-y-auto">
                       {executionResult.stdout}
                     </pre>
@@ -299,13 +384,21 @@ export const ExecutableCodeBlockComponent = ({ node, updateAttributes }: NodeVie
 
                 {/* Stderr */}
                 {executionResult.stderr && (
-                  <div className="px-5 py-4 bg-red-50 dark:bg-red-900/20 border-t border-red-200 dark:border-red-900/30">
+                  <div className="output-section group/output relative px-5 py-4 bg-red-50 dark:bg-red-900/20 border-t border-red-200 dark:border-red-900/30">
                     <div className="text-xs font-semibold text-red-700 dark:text-red-400 mb-3 flex items-center gap-2">
                       <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M18 5v8a2 2 0 01-2 2h-5l-5 4v-4H4a2 2 0 01-2-2V5a2 2 0 012-2h12a2 2 0 012 2zm-11-1a1 1 0 11-2 0 1 1 0 012 0z" clipRule="evenodd" />
                       </svg>
                       Error Output
                     </div>
+                    <CopyButton
+                      text={executionResult.stderr}
+                      size="sm"
+                      variant="icon-only"
+                      className="output-copy-btn absolute top-3 right-3 opacity-0 group-hover/output:opacity-100 focus-visible:opacity-100 transition-opacity duration-150"
+                      aria-label="Copy error output"
+                      title="Copy error output"
+                    />
                     <pre className="code-output text-base font-mono text-red-800 dark:text-red-300 whitespace-pre-wrap bg-white dark:bg-stone-900 p-4 rounded-lg border border-red-200 dark:border-red-900/30 max-h-[300px] overflow-y-auto">
                       {executionResult.stderr}
                     </pre>
@@ -314,13 +407,21 @@ export const ExecutableCodeBlockComponent = ({ node, updateAttributes }: NodeVie
 
                 {/* Error */}
                 {executionResult.error && (
-                  <div className="px-5 py-4 bg-red-50 dark:bg-red-900/20 border-t border-red-200 dark:border-red-900/30">
+                  <div className="output-section group/output relative px-5 py-4 bg-red-50 dark:bg-red-900/20 border-t border-red-200 dark:border-red-900/30">
                     <div className="text-xs font-semibold text-red-700 dark:text-red-400 mb-3 flex items-center gap-2">
                       <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                       </svg>
                       Error
                     </div>
+                    <CopyButton
+                      text={executionResult.error}
+                      size="sm"
+                      variant="icon-only"
+                      className="output-copy-btn absolute top-3 right-3 opacity-0 group-hover/output:opacity-100 focus-visible:opacity-100 transition-opacity duration-150"
+                      aria-label="Copy error"
+                      title="Copy error"
+                    />
                     <pre className="code-output text-base font-mono text-red-800 dark:text-red-300 whitespace-pre-wrap bg-white dark:bg-stone-900 p-4 rounded-lg border border-red-200 dark:border-red-900/30 max-h-[300px] overflow-y-auto">
                       {executionResult.error}
                     </pre>

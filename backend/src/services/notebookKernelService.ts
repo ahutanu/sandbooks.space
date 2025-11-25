@@ -185,17 +185,60 @@ class NotebookKernelService {
   }
 
   /**
-   * Execute a code cell in a notebook
+   * Check if error indicates sandbox expiration
    */
-  public async executeCell(noteId: string, code: string): Promise<ExecuteCellResponse> {
+  private isSandboxExpiredError(error: unknown): boolean {
+    const message = getErrorMessage(error).toLowerCase();
+    return (
+      message.includes('invalid or expired') ||
+      message.includes('token expired') ||
+      message.includes('session expired') ||
+      message.includes('sandbox expired') ||
+      message.includes('sandbox not found') ||
+      message.includes('not found') ||
+      message.includes('invalid token') ||
+      message.includes('invalid session')
+    );
+  }
+
+  /**
+   * Execute a code cell in a notebook
+   * Includes auto-recovery for expired sandboxes
+   */
+  public async executeCell(noteId: string, code: string, isRetry: boolean = false): Promise<ExecuteCellResponse> {
     logger.info('Executing notebook cell', {
       noteId,
-      codeLength: code.length
+      codeLength: code.length,
+      isRetry
     });
 
     try {
       const session = await this.getOrCreateSession(noteId);
       const result = await session.executeCell(code);
+
+      // Check if result contains sandbox expiration error
+      const hasExpiredError = result.outputs.some(output => {
+        if (output.output_type === 'error') {
+          const errorOutput = output as { evalue?: string; ename?: string };
+          const errorText = `${errorOutput.ename || ''} ${errorOutput.evalue || ''}`.toLowerCase();
+          return (
+            errorText.includes('invalid or expired') ||
+            errorText.includes('token expired') ||
+            errorText.includes('invalid token')
+          );
+        }
+        return false;
+      });
+
+      // If we got an expiration error in the output, retry with fresh session
+      if (hasExpiredError && !isRetry) {
+        logger.info('Sandbox expired error detected in output, recreating session', {
+          noteId,
+          sandboxId: session.sandboxId
+        });
+        await this.destroySession(noteId);
+        return this.executeCell(noteId, code, true);
+      }
 
       logger.info('Cell execution completed', {
         noteId,
@@ -208,9 +251,26 @@ class NotebookKernelService {
       return result;
 
     } catch (error: unknown) {
+      // Check if this is a sandbox expiration error
+      if (this.isSandboxExpiredError(error) && !isRetry) {
+        logger.info('Sandbox expired error caught, recreating session and retrying', {
+          noteId,
+          error: getErrorMessage(error)
+        });
+
+        // Destroy the expired session
+        await this.destroySession(noteId).catch(() => {
+          // Ignore destroy errors - session may already be dead
+        });
+
+        // Retry with a fresh session
+        return this.executeCell(noteId, code, true);
+      }
+
       logger.error('Cell execution failed', {
         noteId,
-        error: getErrorMessage(error)
+        error: getErrorMessage(error),
+        isRetry
       });
       throw error;
     }

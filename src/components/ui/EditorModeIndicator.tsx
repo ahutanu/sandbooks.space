@@ -27,7 +27,7 @@ export const EditorModeIndicator = () => {
 
   return (
     <div
-      className="fixed bottom-6 right-6 z-30 flex items-center gap-2"
+      className="fixed bottom-14 right-4 md:bottom-6 md:right-6 z-30 flex flex-col md:flex-row items-end md:items-center gap-2"
       role="status"
       aria-live="polite"
       aria-label={`Editor modes: ${typewriterModeEnabled ? 'Typewriter' : ''} ${focusModeEnabled ? 'Focus' : ''}`}
@@ -83,7 +83,7 @@ export const EditorModeIndicator = () => {
           </svg>
 
           {/* Label */}
-          <span className="text-[11px] font-medium text-stone-700 dark:text-stone-300 tracking-wide relative z-10">
+          <span className="text-xs font-medium text-stone-700 dark:text-stone-300 tracking-wide relative z-10">
             Typewriter
           </span>
 
@@ -148,7 +148,7 @@ export const EditorModeIndicator = () => {
           </svg>
 
           {/* Label */}
-          <span className="text-[11px] font-medium text-stone-700 dark:text-stone-300 tracking-wide relative z-10">
+          <span className="text-xs font-medium text-stone-700 dark:text-stone-300 tracking-wide relative z-10">
             Focus
           </span>
 

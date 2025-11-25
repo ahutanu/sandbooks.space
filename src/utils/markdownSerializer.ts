@@ -67,6 +67,12 @@ function nodeToMarkdown(node: JSONContent): string {
             return `\`\`\`${lang}\n${code}\n\`\`\``;
         }
 
+        case 'executableCodeBlock': {
+            const lang = node.attrs?.language || '';
+            const code = node.attrs?.code || '';
+            return `\`\`\`${lang}\n${code}\n\`\`\``;
+        }
+
         case 'blockquote': {
             const quoteLines = node.content?.map(n => nodeToMarkdown(n)).join('\n') || '';
             return quoteLines.split('\n').map(line => '> ' + line).join('\n');

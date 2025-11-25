@@ -183,6 +183,13 @@ function App() {
 
   return (
     <div className="h-screen flex flex-col bg-white dark:bg-stone-900">
+      {/* Skip to content link for accessibility */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:z-[100] focus:top-4 focus:left-4 focus:px-4 focus:py-2 focus:bg-blue-600 focus:text-white focus:rounded-lg focus:shadow-lg focus:outline-none"
+      >
+        Skip to main content
+      </a>
       <Header onToggleMobileSidebar={toggleMobileSidebar} />
       <Suspense fallback={null}>
         <SearchBar />

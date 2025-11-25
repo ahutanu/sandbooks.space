@@ -82,7 +82,8 @@ export const SHORTCUTS: Shortcut[] = [
 
     // Code Execution
     { id: 'RUN_CODE', keys: ['mod', 'enter'], action: 'Run code block (when focused)', category: 'Code Execution' },
-    { id: 'CLEAR_OUTPUT', keys: ['mod', 'shift', 'c'], action: 'Clear code output', category: 'Code Execution' },
+    { id: 'COPY_CODE_BLOCK', keys: ['mod', 'shift', 'y'], action: 'Copy code block', category: 'Code Execution' },
+    { id: 'CLEAR_OUTPUT', keys: ['mod', 'shift', 'x'], action: 'Clear code output', category: 'Code Execution' },
 
     // General
     { id: 'SHOW_SHORTCUTS', rawKey: '?', keys: [], action: 'Show/hide keyboard shortcuts (when not typing)', category: 'General' },
