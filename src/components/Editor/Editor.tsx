@@ -28,6 +28,7 @@ import Gapcursor from '@tiptap/extension-gapcursor';
 import { DragHandle } from '@tiptap/extension-drag-handle-react';
 import equal from 'fast-deep-equal';
 import { ExecutableCodeBlock } from './executableCodeBlockExtension';
+import { CodeBlockLowlightExtension } from './codeBlockLowlightExtension';
 import { MarkdownInputRules } from './markdownInputRules';
 import { SmartWritingBehaviors } from './smartWritingBehaviors';
 import { SlashCommands } from './extensions/slashCommands';
@@ -87,6 +88,7 @@ export const Editor = ({ note, onUpdate }: EditorProps) => {
       Gapcursor,
       // DragHandle extension registered automatically by <DragHandle> React component
       ExecutableCodeBlock,
+      CodeBlockLowlightExtension,
       Underline,
       Link.configure({
         openOnClick: false,
