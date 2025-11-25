@@ -174,20 +174,20 @@ describe('AnalyticsConsent', () => {
     });
   });
 
-  it('should accept analytics via close button', async () => {
+  it('should accept analytics via accept button', async () => {
     const user = userEvent.setup();
-    
+
     render(<AnalyticsConsent />);
-    
+
     await waitFor(() => {
-      expect(screen.getByLabelText('Accept')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Accept' })).toBeInTheDocument();
     }, { timeout: 2000 });
-    
-    const closeButton = screen.getByLabelText('Accept');
+
+    const acceptButton = screen.getByRole('button', { name: 'Accept' });
     await act(async () => {
-      await user.click(closeButton);
+      await user.click(acceptButton);
     });
-    
+
     expect(analyticsUtils.setAnalyticsConsent).toHaveBeenCalledWith('accepted');
   });
 });

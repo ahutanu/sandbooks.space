@@ -5,7 +5,7 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  workers: process.env.CI ? 1 : 5,
   reporter: [
     ['html', { open: 'never' }],
   ],
@@ -14,6 +14,11 @@ export default defineConfig({
     baseURL: 'http://localhost:5173',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
+    // Use bundled Chromium instead of system Chrome to avoid extra tabs
+    launchOptions: {
+      // Prevent Playwright from opening extra blank pages
+      args: ['--disable-popup-blocking', '--no-first-run', '--no-default-browser-check'],
+    },
   },
 
   webServer: {
@@ -26,7 +31,14 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      use: {
+        ...devices['Desktop Chrome'],
+        // Ensure consistent browser behavior
+        contextOptions: {
+          // Each test gets a fresh context, no shared state
+          ignoreHTTPSErrors: true,
+        },
+      },
     },
   ],
 

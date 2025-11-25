@@ -397,15 +397,26 @@ class HopxService {
     }
 
     // Expired/Not found sandboxes - recreate
+    // Broad pattern matching to catch various Hopx SDK error messages
     if (
       code === 'NOT_FOUND' ||
+      code === 'GONE' ||
+      code === 'INVALID' ||
       normalizedMessage.includes('sandbox not found') ||
       normalizedMessage.includes('sandbox expired') ||
       normalizedMessage.includes('sandbox is not running') ||
       normalizedMessage.includes('invalid or expired') ||
       normalizedMessage.includes('token expired') ||
       normalizedMessage.includes('session expired') ||
-      normalizedMessage.includes('no longer available')
+      normalizedMessage.includes('no longer available') ||
+      normalizedMessage.includes('expired') ||
+      normalizedMessage.includes('not found') ||
+      normalizedMessage.includes('does not exist') ||
+      normalizedMessage.includes('no such') ||
+      normalizedMessage.includes('unavailable') ||
+      normalizedMessage.includes('invalid token') ||
+      normalizedMessage.includes('invalid session') ||
+      normalizedMessage.includes('stale')
     ) {
       return {
         code,
@@ -445,12 +456,12 @@ class HopxService {
       };
     }
 
-    // Unknown errors
+    // Unknown errors - still try to recover once since sandbox state issues are common
     return {
       code,
       message,
       category: 'unknown',
-      recoverable: false
+      recoverable: true
     };
   }
 
@@ -523,35 +534,29 @@ class HopxService {
         sandboxId: this.sandboxId
       });
 
-      // If error indicates sandbox corruption/expiry/auth issues, reset state and auto-retry once
+      // For sandbox-related errors AND unknown errors, reset state and auto-retry once
       // This handles the common case where sandbox expires while user is idle
-      if (['corruption', 'auth', 'expired'].includes(classified.category)) {
+      // Unknown errors often indicate sandbox issues (e.g., "first fail, second works" pattern)
+      const shouldResetAndRetry = ['corruption', 'auth', 'expired', 'unknown'].includes(classified.category);
+
+      if (shouldResetAndRetry && attempt === 0) {
+        logger.info('Sandbox error detected - auto-recovering with fresh sandbox', {
+          category: classified.category,
+          originalError: classified.message
+        });
+
         this.resetSandboxState();
 
-        // Auto-retry once with fresh sandbox (attempt 0 means this is first failure)
-        if (attempt === 0) {
-          logger.info('Sandbox expired or invalid - auto-recovering with fresh sandbox', {
-            category: classified.category,
-            originalError: classified.message
-          });
+        // Small delay to avoid hammering the API
+        await new Promise(resolve => setTimeout(resolve, 500));
 
-          // Small delay to avoid hammering the API
-          await new Promise(resolve => setTimeout(resolve, 500));
-
-          // Retry with fresh sandbox (getHealthySandbox will create new one)
-          return this.executeWithRecovery(code, language, attempt + 1);
-        }
-
-        // Already retried once, now fail
-        logger.error('Sandbox recovery failed after auto-retry', {
-          category: classified.category
-        });
-        this.recordFailure();
-        throw error;
+        // Retry with fresh sandbox (getHealthySandbox will create new one)
+        return this.executeWithRecovery(code, language, attempt + 1);
       }
 
-      // Retry logic for transient errors (network, timeout, unknown)
-      if (attempt < maxAttempts - 1 && classified.recoverable) {
+      // For transient errors (network, timeout), retry without resetting sandbox
+      if (['transient', 'network', 'timeout'].includes(classified.category) &&
+          attempt < maxAttempts - 1 && classified.recoverable) {
         const delay = HEALTH_CHECK_CONFIG.RETRY_DELAYS_MS[attempt];
 
         logger.info('Retrying execution for transient error', {
@@ -560,10 +565,7 @@ class HopxService {
           category: classified.category
         });
 
-        // Wait before retry
         await new Promise(resolve => setTimeout(resolve, delay));
-
-        // Recursive retry
         return this.executeWithRecovery(code, language, attempt + 1);
       }
 

@@ -1,15 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
-  <!-- Notebook/document outline -->
-  <rect x="6" y="4" width="20" height="24" rx="2" stroke="#171717" stroke-width="2" fill="white"/>
-
-  <!-- Code brackets </> -->
-  <path d="M11 14 L9 16 L11 18" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M21 14 L23 16 L21 18" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-
-  <!-- Forward slash / -->
-  <path d="M15 13 L17 19" stroke="#10b981" stroke-width="2" stroke-linecap="round"/>
-
-  <!-- Horizontal lines (notebook lines) -->
-  <line x1="9" y1="10" x2="23" y2="10" stroke="#d4d4d8" stroke-width="1"/>
-  <line x1="9" y1="22" x2="23" y2="22" stroke="#d4d4d8" stroke-width="1"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Rounded square background matching app theme -->
+  <rect x="2" y="2" width="28" height="28" rx="6" fill="#1C1917"/>
+  <!-- Logo with white fill for high contrast -->
+  <g transform="translate(4, 4) scale(1)">
+    <path d="M12 2L2 7l10 5 10-5-10-5zm0 9l2.5-1.25L12 8.5l-2.5 1.25L12 11zm0 2.5l-5-2.5-5 2.5L12 22l10-8.5-5-2.5-5 2.5z" fill="#ffffff"/>
+  </g>
 </svg>

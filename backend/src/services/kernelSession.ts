@@ -113,6 +113,8 @@ try:
         InteractiveShell._sandbooks_instance = InteractiveShell.instance()
         # Configure for non-interactive use
         InteractiveShell._sandbooks_instance.colors = 'NoColor'
+        # Warm up the shell - first execution can fail without this
+        InteractiveShell._sandbooks_instance.run_cell('pass', store_history=False, silent=True)
 
     _shell = InteractiveShell._sandbooks_instance
 

@@ -6,10 +6,9 @@ import { VitePWA } from 'vite-plugin-pwa'
 function htmlEnvReplace(mode: string): Plugin {
   return {
     name: 'html-env-replace',
-    enforce: 'pre', // Run before Vite's built-in HTML processing
     transformIndexHtml: {
-      enforce: 'pre',
-      transform(html) {
+      order: 'pre', // Run before Vite's built-in HTML processing
+      handler(html) {
         // Load env variables using Vite's loadEnv (scoped by mode)
         const env = loadEnv(mode, process.cwd(), '')
         const gtmId = env.VITE_GOOGLE_TAG_MANAGER_TAG || ''
@@ -122,5 +121,78 @@ export default defineConfig(({ mode }) => ({
   ],
   define: {
     global: 'globalThis',
+  },
+  build: {
+    // Chunk size warning threshold set to 750KB
+    // Main app chunk is ~700KB which is acceptable for a rich editor app
+    // Further optimization would require lazy loading specific features
+    chunkSizeWarningLimit: 750,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Core React vendor chunk
+          'vendor-react': ['react', 'react-dom', 'zustand'],
+          // TipTap editor (rich text)
+          'vendor-tiptap': [
+            '@tiptap/core',
+            '@tiptap/react',
+            '@tiptap/starter-kit',
+            '@tiptap/suggestion',
+          ],
+          // CodeMirror (code editing)
+          'vendor-codemirror': [
+            '@codemirror/autocomplete',
+            '@codemirror/commands',
+            '@codemirror/language',
+            '@codemirror/state',
+            '@codemirror/view',
+            '@codemirror/search',
+            '@codemirror/lint',
+            '@uiw/react-codemirror',
+          ],
+          // CodeMirror language modes
+          'vendor-codemirror-langs': [
+            '@codemirror/lang-javascript',
+            '@codemirror/lang-python',
+            '@codemirror/lang-json',
+            '@codemirror/lang-markdown',
+            '@codemirror/lang-html',
+            '@codemirror/lang-css',
+            '@codemirror/lang-sql',
+            '@codemirror/lang-xml',
+          ],
+          // Terminal emulator
+          'vendor-xterm': [
+            '@xterm/xterm',
+            '@xterm/addon-fit',
+            '@xterm/addon-webgl',
+            '@xterm/addon-canvas',
+            '@xterm/addon-search',
+            '@xterm/addon-web-links',
+            '@xterm/addon-unicode11',
+          ],
+          // Syntax highlighting and math
+          'vendor-highlight': ['highlight.js', 'lowlight', 'katex'],
+          // ProseMirror (editor foundation)
+          'vendor-prosemirror': [
+            'prosemirror-model',
+            'prosemirror-state',
+            'prosemirror-view',
+            'prosemirror-transform',
+            'prosemirror-commands',
+            'prosemirror-keymap',
+            'prosemirror-history',
+            'prosemirror-inputrules',
+            'prosemirror-gapcursor',
+            'prosemirror-dropcursor',
+            'prosemirror-schema-list',
+            'prosemirror-markdown',
+            'prosemirror-codemirror-block',
+          ],
+          // UI utilities
+          'vendor-ui': ['react-icons', 'clsx', 'date-fns', 'nanoid'],
+        },
+      },
+    },
   },
 }))

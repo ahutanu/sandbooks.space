@@ -5,6 +5,7 @@ import { LuDownload, LuUpload, LuRefreshCw, LuCircleAlert, LuCheck, LuCloud, LuH
 import { FileSystemSync } from '../FileSystemSync';
 import { showToast as toast } from '../../utils/toast';
 import { parseIpynb, convertIpynbToNote } from '../../utils/ipynb';
+import { serializeToMarkdown } from '../../utils/markdownSerializer';
 import { Popover } from './Popover';
 import { Button } from './Button';
 
@@ -236,20 +237,18 @@ export const SyncStatusIcon = () => {
                             onClick={() => {
                                 const activeNote = notes.find(n => n.id === useNotesStore.getState().activeNoteId);
                                 if (activeNote) {
-                                    import('../../utils/markdownSerializer').then(({ serializeToMarkdown }) => {
-                                        const md = serializeToMarkdown(activeNote.content);
-                                        const blob = new Blob([md], { type: 'text/markdown' });
-                                        const url = URL.createObjectURL(blob);
-                                        const a = document.createElement('a');
-                                        a.href = url;
-                                        a.download = `${activeNote.title || 'untitled'}.md`;
-                                        document.body.appendChild(a);
-                                        a.click();
-                                        document.body.removeChild(a);
-                                        URL.revokeObjectURL(url);
-                                        setIsOpen(false);
-                                        toast.success('Note exported as Markdown');
-                                    });
+                                    const md = serializeToMarkdown(activeNote.content);
+                                    const blob = new Blob([md], { type: 'text/markdown' });
+                                    const url = URL.createObjectURL(blob);
+                                    const a = document.createElement('a');
+                                    a.href = url;
+                                    a.download = `${activeNote.title || 'untitled'}.md`;
+                                    document.body.appendChild(a);
+                                    a.click();
+                                    document.body.removeChild(a);
+                                    URL.revokeObjectURL(url);
+                                    setIsOpen(false);
+                                    toast.success('Note exported as Markdown');
                                 } else {
                                     toast.error('No active note to export');
                                 }

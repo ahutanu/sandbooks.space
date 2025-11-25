@@ -1,6 +1,20 @@
 import { test, expect } from '@playwright/test';
 import { seedCleanState } from './helpers';
 
+/**
+ * Local Terminal Mode Tests
+ *
+ * These tests are for the execution mode toggle feature.
+ * Currently skipped because the UI toggle (data-testid="execution-toggle")
+ * has not been implemented yet. The backend service (executionModeManager)
+ * exists but lacks a corresponding UI component.
+ *
+ * To enable these tests:
+ * 1. Implement a toggle button in the Header component
+ * 2. Add data-testid="execution-toggle" to the button
+ * 3. Wire it to the executionModeManager service
+ * 4. Remove the test.skip() calls
+ */
 test.describe('Local Terminal Mode', () => {
   test.skip('should toggle to local mode on desktop', async ({ page }) => {
     // Desktop viewport

@@ -38,6 +38,8 @@ test.describe('Core Application Flow', () => {
     expect(scrollable).toBe(true);
   });
 
+  // Skipped: UI toggle (data-testid="execution-toggle") not implemented.
+  // See terminal-local-mode.spec.ts for details on enabling this test.
   test.skip('execution mode toggle updates state', async ({ page }) => {
     // Find the execution mode toggle button (title changes based on mode)
     const toggleButton = page.getByTestId('execution-toggle');
