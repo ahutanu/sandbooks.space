@@ -7,7 +7,6 @@ import { FileSystemProvider } from '../services/FileSystemProvider';
 import { storageManager, storageService } from '../services/storageManager';
 import { extractTitleFromContent } from '../utils/titleExtraction';
 import { getNextTagColor } from '../utils/tagColors';
-import { hopxService } from '../services/hopx';
 import { showToast as toast } from '../utils/toast';
 import { createDefaultDocumentation } from '../utils/defaultDocumentation';
 import { recordOnboardingEvent, clearOnboardingEvents } from '../utils/onboardingMetrics';
@@ -238,7 +237,6 @@ export const useNotesStore = create<NotesStore>((set, get) => ({
         ]
       },
       tags: [],
-      codeBlocks: [],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -656,111 +654,7 @@ export const useNotesStore = create<NotesStore>((set, get) => ({
     }
   },
 
-  // Code block management methods
-  addCodeBlock: (noteId, codeBlock) => {
-    set((state) => ({
-      notes: state.notes.map((note) =>
-        note.id === noteId
-          ? {
-            ...note,
-            codeBlocks: [
-              ...(note.codeBlocks || []),
-              {
-                ...codeBlock,
-                id: `code_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-                createdAt: Date.now(),
-                updatedAt: Date.now(),
-              },
-            ],
-            updatedAt: new Date().toISOString(),
-          }
-          : note
-      ),
-    }));
-    storageService.saveAllNotes(get().notes);
-  },
-
-  updateCodeBlock: (noteId, blockId, updates) => {
-    set((state) => ({
-      notes: state.notes.map((note) =>
-        note.id === noteId
-          ? {
-            ...note,
-            codeBlocks: note.codeBlocks?.map((block) =>
-              block.id === blockId
-                ? { ...block, ...updates, updatedAt: Date.now() }
-                : block
-            ),
-            updatedAt: new Date().toISOString(),
-          }
-          : note
-      ),
-    }));
-    storageService.saveAllNotes(get().notes);
-  },
-
-  deleteCodeBlock: (noteId, blockId) => {
-    set((state) => ({
-      notes: state.notes.map((note) =>
-        note.id === noteId
-          ? {
-            ...note,
-            codeBlocks: note.codeBlocks?.filter((block) => block.id !== blockId),
-            updatedAt: new Date().toISOString(),
-          }
-          : note
-      ),
-    }));
-    storageService.saveAllNotes(get().notes);
-  },
-
-  executeCodeBlock: async (noteId, blockId) => {
-    const note = get().notes.find((n) => n.id === noteId);
-    const block = note?.codeBlocks?.find((b) => b.id === blockId);
-
-    if (!block) {
-      throw new Error('Code block not found');
-    }
-
-    const state = get();
-
-    // Check if offline - queue execution instead
-    if (!state.isOnline) {
-      state.queueCodeExecution(noteId, blockId, block.code, block.language);
-      state.updateCodeBlock(noteId, blockId, {
-        output: {
-          error: 'Offline - execution queued. Will run when connection is restored.',
-        },
-      });
-      toast.custom('Code execution queued for when you are back online', {
-        duration: 4000,
-      });
-      return;
-    }
-
-    try {
-      await get().autoHealSandbox({ reason: 'code-block' });
-
-      const result = await hopxService.executeCode(block.code, block.language);
-
-      get().updateCodeBlock(noteId, blockId, {
-        output: {
-          stdout: result.stdout,
-          stderr: result.stderr,
-          error: result.error,
-          executionTime: result.executionTime,
-          exitCode: result.exitCode,
-        },
-      });
-    } catch (error) {
-      console.error('Execution failed:', error);
-      get().updateCodeBlock(noteId, blockId, {
-        output: {
-          error: error instanceof Error ? error.message : 'Execution failed',
-        },
-      });
-    }
-  },
+  // Code block management methods removed - now using ExecutableCodeBlock TipTap nodes
 
   // Offline queue methods
   setIsOnline: (isOnline: boolean) => {
@@ -771,75 +665,14 @@ export const useNotesStore = create<NotesStore>((set, get) => ({
     }
   },
 
-  queueCodeExecution: (noteId, blockId, code, language) => {
-    const queued: import('../types').QueuedCodeExecution = {
-      id: nanoid(),
-      noteId,
-      blockId,
-      code,
-      language,
-      timestamp: Date.now(),
-    };
-
-    set((state) => ({
-      offlineQueue: [...state.offlineQueue, queued],
-    }));
-
-    // Persist queue to localStorage for persistence across sessions
-    const queue = get().offlineQueue;
-    localStorage.setItem('sandbooks-offline-queue', JSON.stringify(queue));
+  queueCodeExecution: (_noteId, _blockId, _code, _language) => {
+    // Offline queue functionality removed - code blocks now execute directly as TipTap nodes
+    console.warn('Offline queue for code blocks has been removed. Code blocks now execute directly via ExecutableCodeBlock nodes.');
   },
 
   processOfflineQueue: async () => {
-    const state = get();
-    const queue = [...state.offlineQueue];
-
-    if (queue.length === 0) {
-      return;
-    }
-
-    // Clear queue immediately to prevent duplicates
-    set({ offlineQueue: [] });
-    localStorage.removeItem('sandbooks-offline-queue');
-
-    toast.custom(`🔄 Processing ${queue.length} queued execution${queue.length > 1 ? 's' : ''}...`, {
-      duration: 3000,
-    });
-
-    // Process each queued execution
-    for (const item of queue) {
-      try {
-        const note = get().notes.find((n) => n.id === item.noteId);
-        if (!note) {
-          console.warn(`Note ${item.noteId} not found for queued execution`);
-          continue;
-        }
-
-        await get().autoHealSandbox({ reason: 'offline-queue' });
-        const result = await hopxService.executeCode(item.code, item.language);
-
-        get().updateCodeBlock(item.noteId, item.blockId, {
-          output: {
-            stdout: result.stdout,
-            stderr: result.stderr,
-            error: result.error,
-            executionTime: result.executionTime,
-            exitCode: result.exitCode,
-          },
-        });
-      } catch (error) {
-        console.error('Failed to process queued execution:', error);
-        get().updateCodeBlock(item.noteId, item.blockId, {
-          output: {
-            error: error instanceof Error ? error.message : 'Failed to execute queued code',
-          },
-        });
-      }
-    }
-
-    toast.success('All queued executions completed', {
-      duration: 3000,
-    });
+    // Offline queue functionality removed - code blocks now execute directly as TipTap nodes
+    console.warn('Offline queue processing removed. Code blocks now execute directly via ExecutableCodeBlock nodes.');
   },
 
   clearOfflineQueue: () => {
@@ -953,6 +786,51 @@ if (typeof window !== 'undefined') {
   }
 }
 
+// Data migration: Convert codeBlocks array to TipTap ExecutableCodeBlock nodes
+export const migrateCodeBlocksToTipTap = (notes: Note[]): Note[] => {
+  return notes.map((note) => {
+    // If no codeBlocks array or already empty, skip migration
+    if (!note.codeBlocks || note.codeBlocks.length === 0) {
+      return note;
+    }
+
+    // Convert codeBlocks to ExecutableCodeBlock nodes
+    const codeBlockNodes = note.codeBlocks.map((block) => ({
+      type: 'executableCodeBlock',
+      attrs: {
+        code: block.code,
+        language: block.language,
+        // Preserve execution history if available
+        executionResult: block.output ? {
+          stdout: block.output.stdout || '',
+          stderr: block.output.stderr || '',
+          exitCode: block.output.exitCode || 0,
+          executionTime: block.output.executionTime,
+          error: block.output.error,
+        } : undefined,
+        isExecuting: false,
+        executionCount: undefined,
+        jupyterOutputs: undefined,
+      },
+    }));
+
+    // Append code blocks to document content
+    const currentContent = note.content.content || [];
+    const newContent = {
+      ...note.content,
+      content: [...currentContent, ...codeBlockNodes],
+    };
+
+    // Return note without codeBlocks array
+    return {
+      ...note,
+      content: newContent,
+      codeBlocks: undefined, // Remove old codeBlocks array
+      updatedAt: new Date().toISOString(),
+    };
+  });
+};
+
 // Helper function to create a new note
 export const createNewNote = (): Note => ({
   id: nanoid(),
@@ -968,14 +846,24 @@ export const createNewNote = (): Note => ({
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
   tags: [], // Initialize with empty tags array
-  codeBlocks: [], // NEW: Initialize with empty code blocks array
+  // codeBlocks removed - now using ExecutableCodeBlock TipTap nodes
 });
 
 // Initialize notes asynchronously from storage
 (async () => {
-  const notes = await storageManager.getNotes();
+  let notes = await storageManager.getNotes();
 
-  // Check if this is first launch  
+  // Run data migration if needed (convert codeBlocks array to TipTap nodes)
+  const needsMigration = notes.some(note => note.codeBlocks && note.codeBlocks.length > 0);
+  if (needsMigration) {
+    console.log('[Migration] Converting codeBlocks to TipTap ExecutableCodeBlock nodes...');
+    notes = migrateCodeBlocksToTipTap(notes);
+    await storageManager.saveAllNotes(notes);
+    console.log('[Migration] Migration complete!');
+    toast.success('Code blocks upgraded to new format', { duration: 3000 });
+  }
+
+  // Check if this is first launch
   if (notes.length === 0 && localStorage.getItem('sandbooks-first-run-complete') !== 'true') {
     const docNotes = createDefaultDocumentation();
     await storageManager.saveAllNotes(docNotes);
@@ -993,5 +881,5 @@ export const createNewNote = (): Note => ({
       activeNoteId: notes[0]?.id || null
     });
   }
-  
+
 })();

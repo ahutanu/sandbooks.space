@@ -18,12 +18,13 @@
  */
 
 import { useEffect, useRef } from 'react';
-import { EditorView, keymap, lineNumbers, highlightActiveLineGutter, highlightActiveLine, dropCursor, rectangularSelection } from '@codemirror/view';
+import { EditorView, keymap, lineNumbers, highlightActiveLineGutter, highlightActiveLine, dropCursor, rectangularSelection, crosshairCursor } from '@codemirror/view';
 import { EditorState, Compartment } from '@codemirror/state';
-import { indentWithTab, defaultKeymap } from '@codemirror/commands';
-import { autocompletion, closeBrackets, closeBracketsKeymap } from '@codemirror/autocomplete';
-import { indentOnInput, bracketMatching } from '@codemirror/language';
-import { searchKeymap, highlightSelectionMatches } from '@codemirror/search';
+import { indentWithTab, defaultKeymap, history, undo, redo, undoSelection, redoSelection, cursorMatchingBracket, selectParentSyntax } from '@codemirror/commands';
+import { autocompletion, closeBrackets, closeBracketsKeymap, completionKeymap } from '@codemirror/autocomplete';
+import { indentOnInput, bracketMatching, foldGutter, foldKeymap } from '@codemirror/language';
+import { searchKeymap, highlightSelectionMatches, search } from '@codemirror/search';
+import { lintKeymap } from '@codemirror/lint';
 import { sandbooksTheme } from './codemirror/theme';
 import { getLanguageExtension } from './codemirror/languages';
 import type { Language } from '../../types';
@@ -61,8 +62,9 @@ export const CodeMirrorEditor = ({
     const state = EditorState.create({
       doc: value,
       extensions: [
-        // Line numbers
+        // Line numbers with code folding support
         lineNumbers(),
+        foldGutter(),
 
         // Highlight active line
         highlightActiveLineGutter(),
@@ -80,11 +82,21 @@ export const CodeMirrorEditor = ({
         // Auto-indentation
         indentOnInput(),
 
-        // Rectangular selection
-        rectangularSelection(),
+        // Advanced selection features
+        rectangularSelection(),  // Column/block selection (Alt+drag)
+        crosshairCursor(),       // Crosshair for rectangular selection
 
         // Highlight selection matches
         highlightSelectionMatches(),
+
+        // Search panel
+        search({ top: true }),
+
+        // History (undo/redo support)
+        history({
+          minDepth: 100,        // Keep more history
+          newGroupDelay: 500,   // Group rapid changes
+        }),
 
         // Language support (dynamic)
         languageCompartment.current.of(getLanguageExtension(language)),
@@ -95,12 +107,25 @@ export const CodeMirrorEditor = ({
         // Readonly mode (dynamic)
         readOnlyCompartment.current.of(EditorView.editable.of(!readonly)),
 
-        // Keyboard shortcuts
+        // Comprehensive keyboard shortcuts
         keymap.of([
+          // Undo/Redo
+          { key: 'Mod-z', run: undo },
+          { key: 'Mod-Shift-z', run: redo },
+          { key: 'Mod-y', run: redo },
+          { key: 'Mod-u', run: undoSelection },
+          { key: 'Mod-Shift-u', run: redoSelection },
+          // Selection
+          { key: 'Mod-d', run: selectParentSyntax },  // Select parent syntax node
+          { key: 'Mod-Alt-p', run: cursorMatchingBracket }, // Jump to matching bracket
+          // Standard shortcuts
           indentWithTab, // Tab/Shift+Tab for indent/dedent
           ...closeBracketsKeymap,
-          ...searchKeymap,
-          ...defaultKeymap,
+          ...completionKeymap,  // Autocomplete shortcuts
+          ...foldKeymap,        // Code folding (Cmd+Alt+[, Cmd+Alt+])
+          ...lintKeymap,        // Linting shortcuts
+          ...searchKeymap,      // Search/replace (Cmd+F, Cmd+H)
+          ...defaultKeymap,     // Standard editor shortcuts
         ]),
 
         // Custom tab size (2 spaces, not 4)

@@ -51,3 +51,4 @@ test.describe('Local Terminal Mode', () => {
     await expect(toggleBtn).toBeVisible({ timeout: 15000 });
   });
 });
+

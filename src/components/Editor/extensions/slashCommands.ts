@@ -109,7 +109,7 @@ export const slashCommandItems: SlashCommandItem[] = [
   {
     title: 'Code Block',
     description: 'Execute code in multiple languages',
-    searchTerms: ['code', 'exec', 'run', 'execute', 'python', 'javascript', 'typescript'],
+    searchTerms: ['code', 'exec', 'run', 'execute'],
     icon: 'Code',
     command: ({ editor, range }) => {
       editor
@@ -117,6 +117,76 @@ export const slashCommandItems: SlashCommandItem[] = [
         .focus()
         .deleteRange(range)
         .setExecutableCodeBlock()
+        .run();
+    },
+  },
+  {
+    title: 'Python Code',
+    description: 'Execute Python code with Jupyter kernel',
+    searchTerms: ['python', 'py', 'code'],
+    icon: 'Code',
+    command: ({ editor, range }) => {
+      editor
+        .chain()
+        .focus()
+        .deleteRange(range)
+        .setExecutableCodeBlock({ language: 'python' })
+        .run();
+    },
+  },
+  {
+    title: 'JavaScript Code',
+    description: 'Execute JavaScript code',
+    searchTerms: ['javascript', 'js', 'code', 'node'],
+    icon: 'Code',
+    command: ({ editor, range }) => {
+      editor
+        .chain()
+        .focus()
+        .deleteRange(range)
+        .setExecutableCodeBlock({ language: 'javascript' })
+        .run();
+    },
+  },
+  {
+    title: 'TypeScript Code',
+    description: 'Execute TypeScript code',
+    searchTerms: ['typescript', 'ts', 'code'],
+    icon: 'Code',
+    command: ({ editor, range }) => {
+      editor
+        .chain()
+        .focus()
+        .deleteRange(range)
+        .setExecutableCodeBlock({ language: 'typescript' })
+        .run();
+    },
+  },
+  {
+    title: 'Bash Script',
+    description: 'Execute Bash script',
+    searchTerms: ['bash', 'sh', 'shell', 'script', 'terminal'],
+    icon: 'Code',
+    command: ({ editor, range }) => {
+      editor
+        .chain()
+        .focus()
+        .deleteRange(range)
+        .setExecutableCodeBlock({ language: 'bash' })
+        .run();
+    },
+  },
+  {
+    title: 'Go Code',
+    description: 'Execute Go code',
+    searchTerms: ['go', 'golang', 'code'],
+    icon: 'Code',
+    command: ({ editor, range }) => {
+      editor
+        .chain()
+        .focus()
+        .deleteRange(range)
+        .setExecutableCodeBlock({ language: 'go' })
         .run();
     },
   },

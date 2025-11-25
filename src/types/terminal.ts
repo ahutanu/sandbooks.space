@@ -58,7 +58,7 @@ export interface TerminalEmulatorProps {
   onStatusChange: (status: TerminalSessionState['status']) => void;
   onLatencyUpdate: (latency: number) => void;
   onError: (error: string) => void;
-  onSessionInfo?: (info: { shell?: string; workingDir?: string; provider?: 'local' | 'cloud' }) => void;
+  onSessionInfo?: (info: { shell?: string; workingDir?: string; provider?: 'cloud' }) => void;
 }
 
 export interface TerminalHeaderProps {

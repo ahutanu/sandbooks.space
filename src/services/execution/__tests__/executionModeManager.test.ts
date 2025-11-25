@@ -56,9 +56,9 @@ describe('ExecutionModeManager', () => {
   
   it('should manage terminal provider separately', () => {
     const mockTerminalProvider: TerminalProviderInterface = {
-      provider: 'local',
+      provider: 'cloud',
       name: 'test',
-      mode: 'pty',
+      mode: 'terminal',
       isAvailable: vi.fn(async () => true),
       createSession: vi.fn(async () => ({ sessionId: 't' })),
       destroySession: vi.fn(async () => {}),

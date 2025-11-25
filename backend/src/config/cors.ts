@@ -10,6 +10,9 @@ export const corsOptions: cors.CorsOptions = {
     const allowedOrigins = [
       env.FRONTEND_URL,
       'http://localhost:5173',
+      'http://localhost:5174',
+      'http://localhost:5175',
+      'http://localhost:5176',        // Dev server alternative ports
       'http://localhost:4173',
       'https://sandbooks.space',      // Production frontend
       'http://127.0.0.1:5173',        // Local dev alternative

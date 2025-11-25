@@ -3,6 +3,7 @@ import clsx from 'clsx';
 import { Logo } from './Logo';
 import { SyncStatusIcon } from './SyncStatusIcon';
 
+
 interface HeaderProps {
   onToggleMobileSidebar: () => void;
 }
@@ -16,6 +17,8 @@ export const Header = ({ onToggleMobileSidebar }: HeaderProps) => {
     const newNote = createNewNote();
     addNote(newNote);
   };
+
+
 
   return (
     <header className="sticky top-0 z-50 bg-white dark:bg-stone-900 border-b border-stone-200 dark:border-stone-800 px-4 md:px-6 lg:px-8 py-3 md:py-4 lg:py-6 flex items-center justify-between shadow-elevation-1 transition-all duration-200" style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}>
@@ -126,6 +129,7 @@ export const Header = ({ onToggleMobileSidebar }: HeaderProps) => {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
         </button>
+
 
         <div className="hidden md:block w-px h-6 bg-stone-300 dark:bg-stone-700"></div>
 

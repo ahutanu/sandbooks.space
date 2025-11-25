@@ -87,41 +87,26 @@ Single global store (`src/store/notesStore.ts`):
 
 - Quake-style overlay (toggle: `Cmd+\``)
 - GLOBAL session (single session per app)
-- Dual execution modes:
-  - **Cloud Mode (REPL)**: Hopx sandbox, SSE streaming, command-line buffering
-  - **Local Mode (PTY)**: Native shell via node-pty, WebSocket streaming, raw terminal
-    - **IMPORTANT**: Local mode only works when backend runs on user's machine (localhost)
-    - Web app (sandbooks.space): Cloud mode only
-    - Local installation: Both modes available
-- Terminal Emulator: xterm.js with GPU acceleration (WebGL)
-- Advanced Features:
+- Cloud-based PTY terminal via Hopx SDK
+- Raw keystroke streaming to backend sandbox
+- Backend handles echo, line editing, command history, tab completion
+- Terminal Emulator: xterm.js with advanced features:
   - Unicode 11 support (emoji, CJK, RTL)
   - Inline images (sixel, iTerm2 protocol)
   - OSC sequence handlers (shell integration ready)
   - Session health checks and reconnection
   - Terminal size validation (10x2 to 1000x1000)
 
-**Local Terminal** (`localTerminal.service.ts`):
-- **Architecture**: Backend runs on user's machine (localhost)
-- **Security**: Frontend validates backend URL is localhost before enabling
-- **Production**: Automatically disabled when backend is remote
-- PTY process spawning via node-pty
-- Shell detection (zsh, bash, fish, PowerShell, cmd)
-- Login shell mode (-l -i) for proper profile loading
-- Environment variable whitelisting (security)
-- Session management with 30min timeout
-- WebSocket streaming for low latency
-- Health check endpoint for session validation
-- Graceful shutdown (SIGTERM → SIGKILL)
-- **Use Case**: Users running `npm start` locally for full local terminal access
-
-**Cloud Terminal** (`terminalSessionManager.ts`):
+**Terminal Sessions** (`terminalSessionManager.ts`):
 - Isolated Hopx sandbox per session
-- SSE for real-time streaming
+- WebSocket for real-time PTY interaction
+- SSE for status events
 - Heartbeat: 30s
+- Session timeout: 30 min inactivity
+- Cleanup: every 5 min
 - Tracks: working dir + env vars
-- Uses `sandbox.commands.run()` with `workingDir`
-- Uses `sandbox.env.update()` for persistence
+- Uses `sandbox.terminal.sendInput()` for keystroke streaming
+- Uses `sandbox.env.update()` for environment persistence
 
 ### Backend Services
 
@@ -133,14 +118,6 @@ Single global store (`src/store/notesStore.ts`):
 - Proactive refresh (5 min before TTL)
 - Sandbox TTL: 1 hour
 
-**Terminal Sessions** (`terminalSessionManager.ts`):
-- Isolated sandbox per session
-- Session timeout: 30 min inactivity
-- Cleanup: every 5 min
-- Heartbeat: 30s
-- Tracks: working dir + env vars
-- Uses `sandbox.commands.run()` with `workingDir`
-- Uses `sandbox.env.update()` for persistence
 
 ### API Routes
 
@@ -150,17 +127,13 @@ Single global store (`src/store/notesStore.ts`):
 - `POST /api/sandbox/recreate` - Force recreate
 - `POST /api/sandbox/destroy` - Destroy sandbox
 
-**Cloud Terminal:**
+**Terminal:**
 - `POST /api/terminal/sessions` - Create session
 - `GET /api/terminal/sessions/:id` - Get session
 - `DELETE /api/terminal/sessions/:id` - Delete session
-- `POST /api/terminal/sessions/:id/execute` - Execute command
+- `POST /api/terminal/sessions/:id/input` - Send input (keystrokes)
 - `GET /api/terminal/sessions/:id/stream` - SSE stream
-
-**Local Terminal:**
-- `WS /api/terminal/local/ws/:sessionId?` - WebSocket connection (creates or reconnects)
-- `GET /api/terminal/local/health` - Check if local terminal is available
-- `GET /api/terminal/local/sessions/:sessionId/health` - Check specific session health
+- `POST /api/terminal/sessions/:id/resize` - Resize terminal
 
 ## Environment Variables
 

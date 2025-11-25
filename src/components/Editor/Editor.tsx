@@ -23,6 +23,9 @@ import YouTube from '@tiptap/extension-youtube';
 import Mention from '@tiptap/extension-mention';
 import CharacterCount from '@tiptap/extension-character-count';
 import Focus from '@tiptap/extension-focus';
+import Dropcursor from '@tiptap/extension-dropcursor';
+import Gapcursor from '@tiptap/extension-gapcursor';
+import { DragHandle } from '@tiptap/extension-drag-handle-react';
 import equal from 'fast-deep-equal';
 import { ExecutableCodeBlock } from './executableCodeBlockExtension';
 import { MarkdownInputRules } from './markdownInputRules';
@@ -35,7 +38,6 @@ import { Audio } from './extensions/Audio';
 import { File } from './extensions/File';
 import { MinimalTagDisplay } from '../Tags';
 import { ImageUploadModal } from './ImageUploadModal';
-import { CodeMirrorBlock } from '../CodeMirror/CodeMirrorBlock';
 import { Markdown } from '@tiptap/markdown';
 import { useTypewriterMode } from '../../hooks/useTypewriterMode';
 import { useNotesStore } from '../../store/notesStore';
@@ -43,7 +45,6 @@ import type { Note } from '../../types';
 import type { JSONContent } from '@tiptap/core';
 import { useEffect, useState, useCallback, useRef } from 'react';
 import clsx from 'clsx';
-import { VscCode } from 'react-icons/vsc';
 import { LinkPopover } from './LinkPopover';
 import { ColorPicker } from './ColorPicker';
 import { FontControls } from './FontControls';
@@ -56,7 +57,7 @@ interface EditorProps {
 }
 
 export const Editor = ({ note, onUpdate }: EditorProps) => {
-  const { typewriterModeEnabled, focusModeEnabled, addCodeBlock } = useNotesStore();
+  const { typewriterModeEnabled, focusModeEnabled } = useNotesStore();
   const [showImageModal, setShowImageModal] = useState(false);
   const [isDraggingFile, setIsDraggingFile] = useState(false);
   const [droppedFiles, setDroppedFiles] = useState<FileList | null>(null);
@@ -74,8 +75,17 @@ export const Editor = ({ note, onUpdate }: EditorProps) => {
         codeBlock: false, // Disable default code block (using custom)
         underline: false, // Use standalone Underline extension
         link: false, // Use standalone Link extension
-        // TrailingNode, Gapcursor, Dropcursor are enabled by default in StarterKit v3
+        dropcursor: false, // Configure explicitly below
+        gapcursor: false, // Configure explicitly below
       }),
+      // Explicit drag-and-drop configuration for all draggable nodes
+      Dropcursor.configure({
+        color: '#3b82f6', // Blue cursor color
+        width: 2,
+        class: 'drop-cursor',
+      }),
+      Gapcursor,
+      // DragHandle extension registered automatically by <DragHandle> React component
       ExecutableCodeBlock,
       Underline,
       Link.configure({
@@ -218,6 +228,35 @@ export const Editor = ({ note, onUpdate }: EditorProps) => {
             .focus('start')
             .setHeading({ level: 1 })
             .run();
+
+          // Add escape hatch: Allow user to press Backspace or Escape to cancel H1
+          const escapeTimeout: ReturnType<typeof setTimeout> = setTimeout(() => cleanup(), 2000);
+          const handleEscapeKey = (e: KeyboardEvent) => {
+            if (e.key === 'Backspace' || e.key === 'Escape') {
+              // Check if we're still in an empty H1
+              const currentNode = editor.state.selection.$anchor.parent;
+              if (currentNode.type.name === 'heading' &&
+                  currentNode.attrs.level === 1 &&
+                  currentNode.textContent === '') {
+                e.preventDefault();
+                // Convert back to paragraph
+                editor.chain()
+                  .focus()
+                  .setParagraph()
+                  .run();
+                // Remove listener immediately
+                cleanup();
+              }
+            }
+          };
+
+          const cleanup = () => {
+            clearTimeout(escapeTimeout);
+            window.removeEventListener('keydown', handleEscapeKey);
+          };
+
+          // Listen for 2 seconds
+          window.addEventListener('keydown', handleEscapeKey);
         }, 100);
       }
     }
@@ -672,23 +711,6 @@ export const Editor = ({ note, onUpdate }: EditorProps) => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
             </button>
-            <button
-              onClick={() => {
-                addCodeBlock(note.id, {
-                  code: '',
-                  language: 'python',
-                });
-              }}
-              className={clsx(
-                'p-2 rounded-md transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500',
-                editor.isActive('executableCodeBlock')
-                  ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 shadow-sm'
-                  : 'text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200 hover:bg-stone-200/50 dark:hover:bg-stone-700/50'
-              )}
-              title="Insert Code Block"
-            >
-              <VscCode size={16} />
-            </button>
           </div>
         </div>
       </div>
@@ -729,8 +751,7 @@ export const Editor = ({ note, onUpdate }: EditorProps) => {
 
         <div className="flex-1 max-w-[650px] mx-auto w-full relative min-h-[50vh]">
           {/* Empty State Watermark */}
-
-          {editor && editor.isEmpty && (!note.codeBlocks || note.codeBlocks.length === 0) && (
+          {editor && editor.isEmpty && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none opacity-[0.03] dark:opacity-[0.05]">
               <Logo className="w-64 h-64 text-stone-900 dark:text-stone-100" />
             </div>
@@ -738,20 +759,25 @@ export const Editor = ({ note, onUpdate }: EditorProps) => {
           <EditorContent editor={editor} />
           {editor && <BubbleMenu editor={editor} />}
           {editor && <FloatingMenu editor={editor} />}
+          {editor && (
+            <DragHandle editor={editor} className="drag-handle-wrapper">
+              <div className="flex flex-col gap-0.5 p-1.5 rounded-md bg-stone-300 dark:bg-stone-600 hover:bg-stone-400 dark:hover:bg-stone-500 cursor-grab active:cursor-grabbing shadow-sm">
+                <div className="flex gap-0.5">
+                  <div className="w-1 h-1 rounded-full bg-stone-600 dark:bg-stone-300"></div>
+                  <div className="w-1 h-1 rounded-full bg-stone-600 dark:bg-stone-300"></div>
+                </div>
+                <div className="flex gap-0.5">
+                  <div className="w-1 h-1 rounded-full bg-stone-600 dark:bg-stone-300"></div>
+                  <div className="w-1 h-1 rounded-full bg-stone-600 dark:bg-stone-300"></div>
+                </div>
+                <div className="flex gap-0.5">
+                  <div className="w-1 h-1 rounded-full bg-stone-600 dark:bg-stone-300"></div>
+                  <div className="w-1 h-1 rounded-full bg-stone-600 dark:bg-stone-300"></div>
+                </div>
+              </div>
+            </DragHandle>
+          )}
         </div>
-
-        {/* Code Blocks (separate from TipTap) */}
-        {note.codeBlocks && note.codeBlocks.length > 0 && (
-          <div className="max-w-4xl mx-auto w-full">
-            {note.codeBlocks.map((block) => (
-              <CodeMirrorBlock
-                key={block.id}
-                noteId={note.id}
-                block={block}
-              />
-            ))}
-          </div>
-        )}
 
         {/* Minimal tags at bottom */}
         <div className="max-w-[650px] mx-auto w-full">

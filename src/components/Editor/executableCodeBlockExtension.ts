@@ -22,7 +22,12 @@ export const ExecutableCodeBlock = Node.create({
   defining: true,
 
   // Make this an atom - CodeMirror manages content internally
+  // This prevents TipTap from interfering with CodeMirror's state
   atom: true,
+
+  // Make draggable - users can reorder code blocks
+  // NOTE: atom and draggable CAN coexist - atom nodes can still be dragged!
+  draggable: true,
 
   // No text content - code stored in attribute
   // Prevent formatting marks (bold, italic, etc.) in code blocks
@@ -64,6 +69,28 @@ export const ExecutableCodeBlock = Node.create({
       isExecuting: {
         default: false,
       },
+      executionCount: {
+        default: undefined,
+        parseHTML: (element) => {
+          const count = element.getAttribute('data-execution-count');
+          return count ? parseInt(count, 10) : undefined;
+        },
+        renderHTML: (attributes) => ({
+          'data-execution-count': attributes.executionCount || null,
+        }),
+      },
+      jupyterOutputs: {
+        default: undefined,
+        parseHTML: (element) => {
+          const data = element.getAttribute('data-jupyter-outputs');
+          return data ? JSON.parse(data) : undefined;
+        },
+        renderHTML: (attributes) => ({
+          'data-jupyter-outputs': attributes.jupyterOutputs
+            ? JSON.stringify(attributes.jupyterOutputs)
+            : null,
+        }),
+      },
     };
   },
 
@@ -93,26 +120,23 @@ export const ExecutableCodeBlock = Node.create({
     return {
       setExecutableCodeBlock:
         (attrs?: { code?: string; language?: Language }) =>
-        ({ editor }: CommandProps) =>
-          editor
-            .chain()
-            .focus()
-            .insertContent({
-              type: this.name,
-              attrs: {
-                code: attrs?.code || '',
-                language: attrs?.language || 'python',
-                executionResult: undefined,
-                isExecuting: false,
-              },
-            })
-            .run(),
+        ({ commands }: CommandProps) =>
+          commands.insertContent({
+            type: this.name,
+            attrs: {
+              code: attrs?.code || '',
+              language: attrs?.language || 'python',
+              executionResult: undefined,
+              isExecuting: false,
+            },
+          }),
     };
   },
 
   addKeyboardShortcuts() {
     return {
-      'Mod-Alt-c': () => this.editor.commands.setExecutableCodeBlock(),
+      'Mod-Alt-c': () =>
+        this.editor.chain().focus().setExecutableCodeBlock().run(),
     };
   },
 });

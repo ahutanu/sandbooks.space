@@ -4,12 +4,14 @@ import clsx from 'clsx';
 import { FaDownload, FaUpload } from 'react-icons/fa';
 import { FileSystemSync } from '../FileSystemSync';
 import { showToast as toast } from '../../utils/toast';
+import { parseIpynb, convertIpynbToNote } from '../../utils/ipynb';
 
 export const SyncStatusIcon = () => {
-    const { syncStatus, lastSyncedAt, importNotes, exportNotes, notes, storageType, storageName } = useNotesStore();
+    const { syncStatus, lastSyncedAt, importNotes, exportNotes, notes, storageType, storageName, addNote } = useNotesStore();
     const [isOpen, setIsOpen] = useState(false);
     const popoverRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const notebookInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -59,6 +61,30 @@ export const SyncStatusIcon = () => {
         };
         reader.readAsText(file);
         e.target.value = '';
+    };
+
+    const handleImportNotebook = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        try {
+            toast.loading('Importing notebook...', { id: 'import' });
+            const notebook = await parseIpynb(file);
+            const note = convertIpynbToNote(notebook, file.name);
+            addNote(note);
+            toast.success(`Imported ${note.title}`, { id: 'import' });
+            setIsOpen(false);
+        } catch (error) {
+            toast.error(
+                `Failed to import: ${error instanceof Error ? error.message : 'Unknown error'}`,
+                { id: 'import' }
+            );
+        }
+
+        // Reset input
+        if (notebookInputRef.current) {
+            notebookInputRef.current.value = '';
+        }
     };
 
     const getIcon = () => {
@@ -189,6 +215,21 @@ export const SyncStatusIcon = () => {
                                 type="file"
                                 accept=".json"
                                 onChange={handleImportFile}
+                                className="hidden"
+                            />
+                        </label>
+
+                        {/* Import Jupyter Notebook */}
+                        <label className="w-full flex items-center gap-3 px-4 py-3 text-left text-sm text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800/60 transition-all duration-200 rounded-lg group cursor-pointer">
+                            <svg className="w-4 h-4 shrink-0 text-stone-500 dark:text-stone-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                            </svg>
+                            <span className="flex-1">Import Jupyter Notebook</span>
+                            <input
+                                ref={notebookInputRef}
+                                type="file"
+                                accept=".ipynb"
+                                onChange={handleImportNotebook}
                                 className="hidden"
                             />
                         </label>

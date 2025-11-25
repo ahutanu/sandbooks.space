@@ -24,7 +24,9 @@ export interface Note {
   createdAt: string;
   updatedAt: string;
   tags?: Tag[]; // Optional for backwards compatibility
-  codeBlocks?: CodeBlock[]; // NEW: Separate code blocks (optional for migration)
+  // codeBlocks removed: now using ExecutableCodeBlock nodes in content
+  // Kept temporarily as optional for backward compatibility during migration
+  codeBlocks?: CodeBlock[];
 }
 
 export interface ExecutionResult {
@@ -137,11 +139,7 @@ export interface NotesStore {
   recreateSandbox: () => Promise<void>;
   // Onboarding
   seedDocsIfMissing: () => void;
-  // Code block management methods (NEW)
-  addCodeBlock: (noteId: string, codeBlock: Omit<CodeBlock, 'id' | 'createdAt' | 'updatedAt'>) => void;
-  updateCodeBlock: (noteId: string, blockId: string, updates: Partial<CodeBlock>) => void;
-  deleteCodeBlock: (noteId: string, blockId: string) => void;
-  executeCodeBlock: (noteId: string, blockId: string) => Promise<void>;
+  // Code block management methods removed - now using ExecutableCodeBlock TipTap nodes
   // Offline queue methods
   setIsOnline: (isOnline: boolean) => void;
   queueCodeExecution: (noteId: string, blockId: string, code: string, language: Language) => void;

@@ -116,6 +116,16 @@ export const FloatingMenu = ({ editor }: FloatingMenuProps) => {
           <circle cx="4" cy="18" r="1" fill="currentColor" />
         </svg>
       </button>
+      <button
+        onClick={() => editor.chain().focus().setExecutableCodeBlock().run()}
+        className="p-2 text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-700 rounded-md transition-colors duration-150"
+        aria-label="Code Block"
+        title="Insert code block"
+      >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+        </svg>
+      </button>
     </div>
   );
 };
