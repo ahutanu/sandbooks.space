@@ -4,7 +4,7 @@ import { Logo } from './Logo';
 import { SyncStatusIcon } from './SyncStatusIcon';
 import { Button } from './Button';
 import { Tooltip } from './Tooltip';
-import { LuMenu, LuPanelLeftClose, LuPanelLeftOpen, LuMoon, LuSun, LuTerminal, LuPlus } from 'react-icons/lu';
+import { LuMenu, LuPanelLeftClose, LuPanelLeftOpen, LuMoon, LuSun, LuTerminal, LuPlus, LuShare2 } from 'react-icons/lu';
 
 
 interface HeaderProps {
@@ -12,7 +12,7 @@ interface HeaderProps {
 }
 
 export const Header = ({ onToggleMobileSidebar }: HeaderProps) => {
-  const { notes, activeNoteId, darkModeEnabled, toggleDarkMode, isSidebarOpen, toggleSidebar, isTerminalOpen, toggleTerminal, addNote } = useNotesStore();
+  const { notes, activeNoteId, darkModeEnabled, toggleDarkMode, isSidebarOpen, toggleSidebar, isTerminalOpen, toggleTerminal, addNote, setShareModalOpen } = useNotesStore();
 
   const activeNote = notes.find(n => n.id === activeNoteId);
 
@@ -119,6 +119,20 @@ export const Header = ({ onToggleMobileSidebar }: HeaderProps) => {
             <LuPlus className="w-5 h-5 text-stone-600 dark:text-stone-400" />
           </Button>
         </Tooltip>
+
+        {activeNote && (
+          <Tooltip content="Share note" shortcut="⌘⇧S">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setShareModalOpen(true)}
+              aria-label="Share note"
+              className="text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+            >
+              <LuShare2 className="w-5 h-5" />
+            </Button>
+          </Tooltip>
+        )}
 
         <div className="hidden md:block w-px h-6 bg-stone-300 dark:bg-stone-700"></div>
 

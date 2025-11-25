@@ -5,6 +5,8 @@ import { Sidebar } from './components/Sidebar/Sidebar';
 import { Editor } from './components/Editor/Editor';
 import { EditorModeIndicator } from './components/ui/EditorModeIndicator';
 import { AnalyticsConsent } from './components/ui/AnalyticsConsent';
+import { PayloadViewerBanner, PayloadLoading, PayloadError, ShareModal } from './components/Share';
+import { isCurrentUrlPayload } from './utils/payload';
 import type { JSONContent } from '@tiptap/react';
 
 // Lazy load on-demand components for better performance
@@ -19,8 +21,16 @@ function App() {
     activeNoteId,
     updateNote,
     setActiveNote,
-    initializeGlobalTerminalSession,
     autoHealSandbox,
+    // Payload link state
+    payloadNote,
+    payloadMetadata,
+    payloadError,
+    isLoadingPayload,
+    loadPayload,
+    // Share modal state
+    isShareModalOpen,
+    setShareModalOpen,
   } = useNotesStore();
   const seedDocsIfMissing = useNotesStore((state) => state.seedDocsIfMissing);
   const activeNote = notes.find((n) => n.id === activeNoteId);
@@ -28,58 +38,72 @@ function App() {
   const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
   const apiToken = import.meta.env.VITE_API_TOKEN as string | undefined;
 
-  // Initialize global terminal session on mount + health check
+  // Check for payload link on mount
   useEffect(() => {
-    // Initialize terminal session immediately
-    initializeGlobalTerminalSession();
+    const result = isCurrentUrlPayload();
+    if (result.isPayload) {
+      loadPayload(result.token);
+    }
+  }, [loadPayload]);
 
-    // Health check interval (every 30s) - auto-recreate on failure
+  // Terminal session health check (only when session exists)
+  // NOTE: Terminal is now LAZY initialized - only created when user first opens it
+  // See toggleTerminal in notesStore.ts for the lazy init trigger
+  useEffect(() => {
+    // Only run health checks if a terminal session already exists
+    const globalTerminalSessionId = useNotesStore.getState().globalTerminalSessionId;
+    if (!globalTerminalSessionId) {
+      return; // No session exists, nothing to health check
+    }
+
+    // Health check interval (every 60s) - only for existing sessions
     const healthCheckInterval = setInterval(async () => {
+      const currentSessionId = useNotesStore.getState().globalTerminalSessionId;
+      if (!currentSessionId) {
+        return; // Session was destroyed, skip health check
+      }
+
       try {
         const response = await fetch(`${apiBaseUrl}/api/health`, {
           headers: apiToken ? { Authorization: `Bearer ${apiToken}` } : undefined,
         });
         if (!response.ok) {
-          await initializeGlobalTerminalSession();
+          // Session unhealthy, mark as error so user can retry
+          useNotesStore.getState().setGlobalTerminalStatus('error');
         }
       } catch (_error) {
-        await initializeGlobalTerminalSession();
+        useNotesStore.getState().setGlobalTerminalStatus('error');
       }
-    }, 30000); // 30 seconds
+    }, 60000); // 60 seconds (increased from 30s)
 
     return () => {
       clearInterval(healthCheckInterval);
     };
-  }, [apiBaseUrl, apiToken, initializeGlobalTerminalSession]);
+  }, [apiBaseUrl, apiToken]);
 
-  // Silently ensure sandbox is healthy on load, tab focus, and background intervals
+  // LAZY SANDBOX INITIALIZATION: No longer eagerly creates sandbox on app start
+  // Sandbox is only created when user first executes code (see ExecutableCodeBlock.tsx)
+  // This useEffect only handles visibility-based refresh for EXISTING sandboxes
   useEffect(() => {
-    const heal = async (reason: string, force?: boolean) => {
-      try {
-        await autoHealSandbox({ reason, force });
-      } catch (_error) {
-        // Silent failure - fallback execution path will still retry
-      }
-    };
-
-    // Kick off heal on initial mount
-    heal('app_start', true);
-
-    // Heal when returning to the tab
-    const handleVisibility = () => {
+    // Only heal on visibility change if user has already used the sandbox
+    const handleVisibility = async () => {
       if (!document.hidden) {
-        heal('visibility');
+        const state = useNotesStore.getState();
+        // Only heal if sandbox was previously used (not 'unknown' status)
+        if (state.sandboxStatus !== 'unknown' && state.lastHealthCheck) {
+          try {
+            await autoHealSandbox({ reason: 'visibility' });
+          } catch (_error) {
+            // Silent - will retry on next code execution
+          }
+        }
       }
     };
 
     document.addEventListener('visibilitychange', handleVisibility);
 
-    // Background heartbeat to keep sandboxes ahead of expiry
-    const healInterval = window.setInterval(() => heal('interval'), 10 * 60 * 1000);
-
     return () => {
       document.removeEventListener('visibilitychange', handleVisibility);
-      clearInterval(healInterval);
     };
   }, [autoHealSandbox]);
 
@@ -134,6 +158,28 @@ function App() {
   // Global keyboard shortcuts
   useKeyboardShortcuts();
 
+  // Show payload loading state
+  if (isLoadingPayload) {
+    return <PayloadLoading />;
+  }
+
+  // Show payload error state
+  if (payloadError) {
+    return <PayloadError error={payloadError} />;
+  }
+
+  // Show payload viewer when viewing a shared note
+  if (payloadNote && payloadMetadata) {
+    return (
+      <div className="h-screen flex flex-col bg-white dark:bg-stone-900">
+        <PayloadViewerBanner note={payloadNote} metadata={payloadMetadata} />
+        <main className="flex-1 flex flex-col overflow-hidden bg-white dark:bg-stone-900">
+          <Editor note={payloadNote} onUpdate={() => {}} readOnly />
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="h-screen flex flex-col bg-white dark:bg-stone-900">
       <Header onToggleMobileSidebar={toggleMobileSidebar} />
@@ -146,6 +192,13 @@ function App() {
       <EditorModeIndicator />
       {/* Analytics consent banner (minimal, non-intrusive) */}
       <AnalyticsConsent />
+      {/* Share modal */}
+      {isShareModalOpen && activeNote && (
+        <ShareModal
+          note={activeNote}
+          onClose={() => setShareModalOpen(false)}
+        />
+      )}
       {/* Two-pane layout: Sidebar + Editor (industry-standard flex pattern) */}
       <div className="flex-1 flex overflow-hidden bg-white dark:bg-stone-900">
         {/* Desktop sidebar - independently scrollable */}

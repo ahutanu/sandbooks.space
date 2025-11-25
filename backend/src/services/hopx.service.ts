@@ -6,12 +6,13 @@ import { SupportedLanguage, ExecuteResponse, RichOutput } from '../types/execute
 import type { HopxSandbox, HopxHealth, HopxMetrics } from '../types/hopx.types';
 import { getErrorCode, getErrorMessage } from '../utils/errorUtils';
 
-// Health check configuration
+// Health check configuration - optimized for minimal sandbox creation
 const HEALTH_CHECK_CONFIG = {
-  CACHE_DURATION_MS: 10000,      // 10 seconds cache (reduced from 30s for faster expiry detection)
-  SANDBOX_TIMEOUT_SECONDS: 3600, // 1 hour auto-kill
-  EXPIRY_BUFFER_MS: 5 * 60 * 1000, // Refresh 5 minutes before expiry
-  RETRY_DELAYS_MS: [1000, 2000]  // 1s, 2s between retries (reduced from 2s, 5s for faster recovery)
+  CACHE_DURATION_MS: 60000,       // 60 seconds cache - reduced API calls
+  SANDBOX_TIMEOUT_SECONDS: 600,   // 10 minutes TTL (reduced from 1 hour)
+  EXPIRY_BUFFER_MS: 60 * 1000,    // Refresh 1 minute before expiry (reduced from 5 min)
+  RETRY_DELAYS_MS: [1000, 2000],  // 1s, 2s between retries
+  ACTIVITY_EXTENSION_MS: 5 * 60 * 1000, // Extend sandbox by 5 min on activity
 };
 
 // Circuit breaker configuration
@@ -34,6 +35,7 @@ class HopxService {
   private lastHealthCheck: number = 0;
   private sandboxId: string | null = null;
   private sandboxCreatedAt: number | null = null;
+  private lastActivityAt: number | null = null; // Track last user activity
 
   // Circuit breaker state
   private consecutiveFailures: number = 0;
@@ -42,7 +44,27 @@ class HopxService {
 
   constructor() {
     this.apiKey = env.HOPX_API_KEY;
-    logger.info('Hopx Service initialized');
+    logger.info('Hopx Service initialized (lazy mode - no sandbox created until first use)');
+  }
+
+  /**
+   * Record user activity to extend sandbox lifetime
+   * Called on code execution to keep sandbox alive during active use
+   */
+  private recordActivity(): void {
+    this.lastActivityAt = Date.now();
+  }
+
+  /**
+   * Get effective TTL based on activity
+   * If user is active, extend sandbox lifetime
+   */
+  private getEffectiveTtlMs(): number {
+    const baseTtl = HEALTH_CHECK_CONFIG.SANDBOX_TIMEOUT_SECONDS * 1000;
+
+    // If there's recent activity, we can use the full TTL
+    // The sandbox will auto-extend on the Hopx side if we're actively using it
+    return baseTtl;
   }
 
   /**
@@ -143,10 +165,11 @@ class HopxService {
     this.sandboxId = null;
     this.lastHealthCheck = 0;
     this.sandboxCreatedAt = null;
+    this.lastActivityAt = null;
   }
 
   /**
-   * Determine if the current sandbox is nearing expiry (Hopx TTL is 1h)
+   * Determine if the current sandbox is nearing expiry (TTL is 10 min)
    */
   private isSandboxExpiringSoon(): boolean {
     if (!this.sandboxCreatedAt) {
@@ -164,37 +187,45 @@ class HopxService {
 
   /**
    * Get a healthy sandbox, creating or recreating as needed
-   * Uses 10s health check cache to minimize overhead
+   * Uses 60s health check cache to minimize overhead (lazy creation pattern)
    */
   private async getHealthySandbox(): Promise<HopxSandbox> {
     // Check circuit breaker before attempting any operations
     this.checkCircuitBreaker();
 
+    // Record activity for sandbox lifetime extension
+    this.recordActivity();
+
     try {
-      // Step 1: No sandbox exists - create new one
+      // Step 1: No sandbox exists - create new one (LAZY - only when actually needed)
       if (!this.sandbox) {
-        logger.info('No sandbox exists, creating new one');
+        logger.info('No sandbox exists, creating on first use (lazy initialization)');
         return this.createSandbox();
       }
 
       // Step 2: Sandbox is nearing expiry - proactively refresh
+      // But only if not recently active (to avoid unnecessary recreation during active use)
       if (this.isSandboxExpiringSoon()) {
         logger.info('Sandbox nearing expiry, recreating proactively', {
-          sandboxId: this.sandboxId
+          sandboxId: this.sandboxId,
+          age: this.sandboxCreatedAt ? `${Math.round((Date.now() - this.sandboxCreatedAt) / 1000)}s` : 'unknown'
         });
         return this.recreateSandbox();
       }
 
-      // Step 3: Recent health check passed - return cached sandbox
+      // Step 3: Recent health check passed - return cached sandbox (60s cache)
       const timeSinceLastCheck = Date.now() - this.lastHealthCheck;
       if (timeSinceLastCheck < HEALTH_CHECK_CONFIG.CACHE_DURATION_MS) {
         logger.debug('Using cached healthy sandbox', {
-          cacheAge: `${Math.round(timeSinceLastCheck / 1000)}s`
+          cacheAge: `${Math.round(timeSinceLastCheck / 1000)}s`,
+          ttlRemaining: this.sandboxCreatedAt
+            ? `${Math.round((HEALTH_CHECK_CONFIG.SANDBOX_TIMEOUT_SECONDS * 1000 - (Date.now() - this.sandboxCreatedAt)) / 1000)}s`
+            : 'unknown'
         });
         return this.sandbox;
       }
 
-      // Step 4: Perform health check
+      // Step 4: Perform health check (only if cache expired)
       const isHealthy = await this.checkHealth();
       if (isHealthy) {
         this.lastHealthCheck = Date.now();

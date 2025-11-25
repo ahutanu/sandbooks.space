@@ -74,6 +74,22 @@ export interface QueuedCodeExecution {
   timestamp: number;
 }
 
+// Payload link metadata
+export interface PayloadMetadata {
+  version: number;
+  createdAt: Date;
+  updatedAt: Date;
+  expiresAt?: Date;
+  isExpired: boolean;
+  tokenLength: number;
+}
+
+// Payload link error
+export interface PayloadErrorInfo {
+  message: string;
+  type: 'corrupted' | 'expired' | 'version' | 'unknown';
+}
+
 export interface NotesStore {
   notes: Note[];
   activeNoteId: string | null;
@@ -106,6 +122,12 @@ export interface NotesStore {
   // Offline queue state
   isOnline: boolean;
   offlineQueue: QueuedCodeExecution[];
+  // Payload link state (for shared notes)
+  payloadNote: Note | null;
+  payloadMetadata: PayloadMetadata | null;
+  payloadError: PayloadErrorInfo | null;
+  isLoadingPayload: boolean;
+  isShareModalOpen: boolean;
   addNote: (note: Note) => void;
   updateNote: (id: string, updates: Partial<Note>) => void;
   deleteNote: (id: string) => void;
@@ -149,4 +171,9 @@ export interface NotesStore {
   getStorageInfo: () => import('../services/StorageProvider').StorageProviderMetadata;
   connectToLocalFolder: () => Promise<void>;
   disconnectFromLocalFolder: () => Promise<void>;
+  // Payload link methods
+  loadPayload: (token: string) => Promise<void>;
+  clearPayload: () => void;
+  savePayloadToNotes: () => Note | null;
+  setShareModalOpen: (open: boolean) => void;
 }

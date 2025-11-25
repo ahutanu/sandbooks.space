@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { nanoid } from 'nanoid';
-import type { NotesStore, Note } from '../types';
+import type { NotesStore, Note, PayloadErrorInfo } from '../types';
 import type { Tag, TagColor } from '../types/tags.types';
 import { LocalStorageProvider } from '../services/LocalStorageProvider';
 import { FileSystemProvider } from '../services/FileSystemProvider';
@@ -12,6 +12,14 @@ import { createDefaultDocumentation } from '../utils/defaultDocumentation';
 import { recordOnboardingEvent, clearOnboardingEvents } from '../utils/onboardingMetrics';
 import { fetchWithTimeout } from '../utils/fetchWithTimeout';
 import { cloudTerminalProvider } from '../services/terminal/index';
+import {
+  decodePayload,
+  payloadToNote,
+  PayloadExpiredError,
+  PayloadVersionError,
+  PayloadDecodeError,
+  getDecodeErrorMessage,
+} from '../utils/payload';
 
 // Initialize dark mode from localStorage or system preference
 const initDarkMode = (): boolean => {
@@ -89,6 +97,12 @@ export const useNotesStore = create<NotesStore>((set, get) => ({
   // Offline queue state
   isOnline: typeof navigator !== 'undefined' ? navigator.onLine : true,
   offlineQueue: [],
+  // Payload link state (for shared notes)
+  payloadNote: null,
+  payloadMetadata: null,
+  payloadError: null,
+  isLoadingPayload: false,
+  isShareModalOpen: false,
 
   addNote: (note: Note) => {
     set((state) => {
@@ -533,7 +547,8 @@ export const useNotesStore = create<NotesStore>((set, get) => ({
       return true;
     }
     const now = Date.now();
-    const recentlyChecked = state.lastHealthCheck && now - state.lastHealthCheck < 15_000;
+    // Throttle to 60 seconds (matches backend cache duration)
+    const recentlyChecked = state.lastHealthCheck && now - state.lastHealthCheck < 60_000;
     if (recentlyChecked && !options?.force) {
       return state.sandboxStatus === 'healthy';
     }
@@ -759,6 +774,106 @@ export const useNotesStore = create<NotesStore>((set, get) => ({
         toast.success('Disconnected from local folder');
       }
     }
+  },
+
+  // Payload link methods
+  loadPayload: async (token: string) => {
+    set({
+      isLoadingPayload: true,
+      payloadError: null,
+      payloadNote: null,
+      payloadMetadata: null,
+    });
+
+    try {
+      const { payloadNote: decodedPayload, metadata } = decodePayload(token);
+      const note = payloadToNote(decodedPayload);
+
+      set({
+        payloadNote: note,
+        payloadMetadata: metadata,
+        isLoadingPayload: false,
+        payloadError: null,
+      });
+
+      recordOnboardingEvent('payload_link_opened', { tokenLength: token.length });
+    } catch (error) {
+      let errorInfo: PayloadErrorInfo;
+
+      if (error instanceof PayloadExpiredError) {
+        errorInfo = {
+          message: 'This shared note has expired and is no longer available.',
+          type: 'expired',
+        };
+      } else if (error instanceof PayloadVersionError) {
+        errorInfo = {
+          message:
+            error.code === 'VERSION_TOO_NEW'
+              ? 'This note was created with a newer version of Sandbooks. Please refresh the page to update.'
+              : 'This link format is no longer supported.',
+          type: 'version',
+        };
+      } else if (error instanceof PayloadDecodeError) {
+        errorInfo = {
+          message: getDecodeErrorMessage(error),
+          type: 'corrupted',
+        };
+      } else {
+        errorInfo = {
+          message: 'Could not open this shared note. The link may be corrupted.',
+          type: 'unknown',
+        };
+      }
+
+      set({
+        payloadError: errorInfo,
+        isLoadingPayload: false,
+        payloadNote: null,
+        payloadMetadata: null,
+      });
+    }
+  },
+
+  clearPayload: () => {
+    set({
+      payloadNote: null,
+      payloadMetadata: null,
+      payloadError: null,
+      isLoadingPayload: false,
+    });
+  },
+
+  savePayloadToNotes: () => {
+    const state = get();
+    if (!state.payloadNote) {
+      return null;
+    }
+
+    // Create a new note with a fresh ID
+    const newNote: Note = {
+      ...state.payloadNote,
+      id: nanoid(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    // Add to notes
+    get().addNote(newNote);
+
+    // Clear payload state
+    set({
+      payloadNote: null,
+      payloadMetadata: null,
+      payloadError: null,
+    });
+
+    toast.success('Note saved to your collection');
+    recordOnboardingEvent('payload_note_saved');
+
+    return newNote;
+  },
+
+  setShareModalOpen: (open: boolean) => {
+    set({ isShareModalOpen: open });
   },
 }));
 

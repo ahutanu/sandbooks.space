@@ -52,9 +52,10 @@ import { EditorToolbar } from './EditorToolbar';
 interface EditorProps {
   note: Note;
   onUpdate: (content: JSONContent) => void;
+  readOnly?: boolean;
 }
 
-export const Editor = ({ note, onUpdate }: EditorProps) => {
+export const Editor = ({ note, onUpdate, readOnly = false }: EditorProps) => {
   const { typewriterModeEnabled, focusModeEnabled } = useNotesStore();
   const [showImageModal, setShowImageModal] = useState(false);
   const [isDraggingFile, setIsDraggingFile] = useState(false);
@@ -179,8 +180,11 @@ export const Editor = ({ note, onUpdate }: EditorProps) => {
       Markdown, // Official Tiptap v3 markdown support
     ],
     content: note.content,
+    editable: !readOnly,
     onUpdate: ({ editor }) => {
-      onUpdate(editor.getJSON());
+      if (!readOnly) {
+        onUpdate(editor.getJSON());
+      }
     },
     editorProps: {
       attributes: {

@@ -7,12 +7,12 @@ import type { ExecuteCellResponse, KernelSessionInfo } from '../types/notebook.t
 import { KernelSession } from './kernelSession';
 import { getErrorMessage } from '../utils/errorUtils';
 
-// Cleanup interval: check for timed-out sessions every 5 minutes
-const CLEANUP_INTERVAL_MS = 5 * 60 * 1000;
+// Cleanup interval: check for timed-out sessions every 2 minutes (reduced for faster cleanup)
+const CLEANUP_INTERVAL_MS = 2 * 60 * 1000;
 
-// Sandbox configuration for notebooks
+// Sandbox configuration for notebooks - optimized for minimal resource usage
 const NOTEBOOK_SANDBOX_CONFIG = {
-  TIMEOUT_SECONDS: 7200, // 2 hours (increased from 1 hour for long-running analyses)
+  TIMEOUT_SECONDS: 600, // 10 minutes (reduced from 2 hours to match code sandbox TTL)
   TEMPLATE: 'code-interpreter'
 };
 

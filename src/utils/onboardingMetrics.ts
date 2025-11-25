@@ -11,7 +11,9 @@ export type OnboardingEvent =
   | 'notes_imported'
   | 'terminal_toggled'
   | 'markdown_imported'
-  | 'docs_reset';
+  | 'docs_reset'
+  | 'payload_link_opened'
+  | 'payload_note_saved';
 
 export interface OnboardingEventRecord {
   event: OnboardingEvent;
