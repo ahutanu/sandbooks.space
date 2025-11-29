@@ -32,7 +32,11 @@ export const SmartWritingBehaviors = Extension.create({
         let depth = $from.depth;
         while (depth > 0) {
           const node = $from.node(depth);
-          if (node.type.name === 'codeBlock' || node.type.name === 'executableCodeBlock') {
+          if (
+            node.type.name === 'codeBlock' ||
+            node.type.name === 'codeBlockLowlight' ||
+            node.type.name === 'executableCodeBlock'
+          ) {
             return false; // Use default behavior in code blocks
           }
           depth--;

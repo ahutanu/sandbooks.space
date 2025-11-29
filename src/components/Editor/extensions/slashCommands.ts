@@ -115,6 +115,20 @@ export const slashCommandItems: SlashCommandItem[] = [
     },
   },
   {
+    title: 'Code Snippet',
+    description: 'Insert highlighted code without execution',
+    searchTerms: ['codeblock', 'snippet', 'highlight', 'lowlight'],
+    icon: 'Code',
+    command: ({ editor, range }) => {
+      editor
+        .chain()
+        .focus()
+        .deleteRange(range)
+        .setCodeBlockLowlight()
+        .run();
+    },
+  },
+  {
     title: 'Python Code',
     description: 'Execute Python code with Jupyter kernel',
     searchTerms: ['python', 'py', 'code'],
